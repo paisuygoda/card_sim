@@ -1,51 +1,76 @@
-import { IGameUIBridge, AnimationEvent, InputRequest } from '@core/infrastructure/IGameUIBridge';
+import { IGameUIBridge, GameEvent, InputRequest, GameEventDataMap } from '@core/infrastructure/IGameUIBridge';
+import { useGameStateStore } from '@store/useGameStateStore';
+import { useUIStateStore } from '@store/useUIStateStore';
+import { GameState, Command } from '@core/domain/models';
 
 /**
  * ReactUIBridge - React UI との連携実装
  * 
  * IGameUIBridgeの本番実装
- * Zustandストアと連携してReactコンポーネントに状態を反映し、
- * 演出完了を待機する
+ * Zustandストアと連携してReactコンポーネントに状態を反映
+ * 
+ * 設計思想:
+ * - notifyGameEvent: キューに積むだけで即座にreturn（ロジックの進行を妨げない）
+ * - UI側: キューを監視して独立に演出を処理
+ * - waitUI: キューが空になるまで待機（同期ポイント）
  */
 export class ReactUIBridge implements IGameUIBridge {
   /**
-   * 演出の実行と待機
+   * 演出の実行
+   * イベントをキューに追加するだけで即座にreturn
+   * 演出の実行はUI側が行う
+   * 
    * @param eventType イベント種類
    * @param data 演出データ
    */
-  async playAnimation(eventType: AnimationEvent, data: any): Promise<void> {
-    // TODO: 実装
-    // 1. Zustandストアにアニメーションイベントを送信
-    // 2. アニメーション完了を示すPromiseを生成
-    // 3. UIからの完了通知を待つ
-    console.log(`[ReactUIBridge] playAnimation: ${eventType}`, data);
+  async notifyGameEvent<T extends GameEvent>(
+    eventType: T,
+    data: GameEventDataMap[T]
+  ): Promise<void> {
+    // Zustandストアのキューにイベントを追加
+    useUIStateStore.getState().enqueueAnimation(eventType, data);
+    
+    // 即座にreturn（演出完了を待たない）
+  }
+
+  /**
+   * UI処理完了の待機
+   * アニメーションキューが空になるまで待機
+   * これがゲームロジックとUIの同期ポイント
+   */
+  async waitUI(): Promise<void> {
+    // UI側のキューが空になるまでポーリング
+    const store = useUIStateStore.getState();
+    while (store.hasAnimationInQueue() || store.isAnimationPlaying()) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
   }
 
   /**
    * プレイヤーの入力待ち
    * @param requestType 入力要求種類
    * @param context 入力コンテキスト
+   * @returns 選択されたコマンド
    */
-  async waitPlayerInput<T = any>(
+  async waitPlayerInput(
     requestType: InputRequest,
     context: any
-  ): Promise<T> {
-    // TODO: 実装
-    // 1. Zustandストアに入力要求を送信
-    // 2. 入力完了を示すPromiseを生成
-    // 3. UIからの入力を待つ
-    console.log(`[ReactUIBridge] waitPlayerInput: ${requestType}`, context);
-    return {} as T;
+  ): Promise<Command> {
+    // Zustandストアに入力要求を送信し、完了を待機
+    const result = await useUIStateStore.getState().startInput<Command>(
+      requestType,
+      context
+    );
+    return result;
   }
 
   /**
    * ゲーム状態の更新通知
    * @param gameState 現在のゲーム状態
    */
-  updateGameState(gameState: any): void {
-    // TODO: 実装
+  updateGameState(gameState: GameState): void {
     // Zustandストアのゲーム状態を更新
-    console.log('[ReactUIBridge] updateGameState', gameState);
+    useGameStateStore.getState().setGameState(gameState);
   }
 
   /**
@@ -54,8 +79,13 @@ export class ReactUIBridge implements IGameUIBridge {
    * @param level ログレベル
    */
   log(message: string, level: 'info' | 'warning' | 'error' = 'info'): void {
-    // TODO: 実装
     // Zustandストアにログを追加
-    console.log(`[ReactUIBridge][${level}] ${message}`);
+    useUIStateStore.getState().addLog(message, level);
+    
+    // 開発環境ではコンソールにも出力
+    if (process.env.NODE_ENV === 'development') {
+      const logFn = level === 'error' ? console.error : level === 'warning' ? console.warn : console.log;
+      logFn(`[ReactUIBridge][${level}] ${message}`);
+    }
   }
 }

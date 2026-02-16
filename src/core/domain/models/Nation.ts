@@ -7,8 +7,8 @@ import { Unit } from './Unit';
  * プレイヤーおよびNPCが操作する運営主体
  */
 export interface Nation {
-  /** 国家ID（手番順と一致） */
-  nationId: number;
+  /** 国家ID */
+  nationId: string;
   /** 国家名（表示用） */
   name: string;
   /** NPC国家かどうか */
@@ -40,5 +40,5 @@ export interface Nation {
   /** 好戦度（NPC思考用） */
   aggressiveness: number;
   /** 敵対国家ID配列 */
-  hostileNationIds: number[];
+  hostileNationIds: string[];
 }

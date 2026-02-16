@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { AnimationEvent, InputRequest } from '@core/infrastructure/IGameUIBridge';
+import { GameEvent, InputRequest } from '@core/infrastructure/IGameUIBridge';
 
 /**
  * useUIStateStore - UI状態管理
@@ -9,9 +9,14 @@ import { AnimationEvent, InputRequest } from '@core/infrastructure/IGameUIBridge
  */
 
 interface AnimationState {
-  eventType: AnimationEvent;
+  eventType: GameEvent;
   data: any;
   isPlaying: boolean;
+}
+
+interface AnimationQueueItem {
+  eventType: GameEvent;
+  data: any;
 }
 
 interface InputState<T = any> {
@@ -29,8 +34,11 @@ interface LogEntry {
 }
 
 interface UIStateStore {
-  /** アニメーション状態 */
-  animation: AnimationState | null;
+  /** アニメーションキュー */
+  animationQueue: AnimationQueueItem[];
+
+  /** 現在再生中のアニメーション */
+  currentAnimation: AnimationState | null;
 
   /** 入力待ち状態 */
   input: InputState | null;
@@ -38,11 +46,20 @@ interface UIStateStore {
   /** ログエントリー */
   logs: LogEntry[];
 
-  /** アニメーション開始 */
-  startAnimation: (eventType: AnimationEvent, data: any) => Promise<void>;
+  /** アニメーションをキューに追加 */
+  enqueueAnimation: (eventType: GameEvent, data: any) => void;
 
-  /** アニメーション完了 */
+  /** キューから次のアニメーションを取得して再生開始 */
+  dequeueAnimation: () => void;
+
+  /** 現在のアニメーション完了 */
   completeAnimation: () => void;
+
+  /** キューにアニメーションがあるか */
+  hasAnimationInQueue: () => boolean;
+
+  /** アニメーション再生中か */
+  isAnimationPlaying: () => boolean;
 
   /** 入力要求開始 */
   startInput: <T = any>(requestType: InputRequest, context: any) => Promise<T>;
@@ -57,34 +74,53 @@ interface UIStateStore {
   clearLogs: () => void;
 }
 
-let animationResolve: (() => void) | null = null;
 let inputResolve: ((value: any) => void) | null = null;
 let logIdCounter = 0;
 
 export const useUIStateStore = create<UIStateStore>((set, get) => ({
-  animation: null,
+  animationQueue: [],
+  currentAnimation: null,
   input: null,
   logs: [],
 
-  startAnimation: async (eventType: AnimationEvent, data: any) => {
-    return new Promise<void>((resolve) => {
-      animationResolve = resolve;
-      set({
-        animation: {
-          eventType,
-          data,
-          isPlaying: true,
-        },
-      });
-    });
+  enqueueAnimation: (eventType: GameEvent, data: any) => {
+    set((state) => ({
+      animationQueue: [...state.animationQueue, { eventType, data }],
+    }));
+  },
+
+  dequeueAnimation: () => {
+    const state = get();
+    if (state.animationQueue.length === 0 || state.currentAnimation?.isPlaying) {
+      return;
+    }
+
+    const nextAnimation = state.animationQueue[0];
+    set((state) => ({
+      animationQueue: state.animationQueue.slice(1),
+      currentAnimation: {
+        eventType: nextAnimation.eventType,
+        data: nextAnimation.data,
+        isPlaying: true,
+      },
+    }));
   },
 
   completeAnimation: () => {
-    if (animationResolve) {
-      animationResolve();
-      animationResolve = null;
+    set({ currentAnimation: null });
+    // 次のアニメーションがあれば自動的に開始
+    const state = get();
+    if (state.animationQueue.length > 0) {
+      state.dequeueAnimation();
     }
-    set({ animation: null });
+  },
+
+  hasAnimationInQueue: () => {
+    return get().animationQueue.length > 0;
+  },
+
+  isAnimationPlaying: () => {
+    return get().currentAnimation?.isPlaying ?? false;
   },
 
   startInput: async <T = any>(requestType: InputRequest, context: any) => {

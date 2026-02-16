@@ -8,5 +8,5 @@ export * from './EffectExecutor';
 export * from './GameMath';
 export * from './NPCLogic';
 export * from './PriorityManager';
-export * from './StateManager';
+export * from './StateExecutor';
 export * from './UnitManager';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAnimation } from '@ui/hooks/useAnimation';
-import { AnimationEvent } from '@core/infrastructure/IGameUIBridge';
+import { GameEvent } from '@core/infrastructure/IGameUIBridge';
 
 /**
  * AnimationDisplay - アニメーション表示コンポーネント
@@ -23,19 +23,19 @@ export const AnimationDisplay: React.FC = () => {
 
   const renderAnimation = () => {
     switch (animation.eventType) {
-      case AnimationEvent.UNIT_DAMAGE:
+      case GameEvent.UNIT_DAMAGE:
         return (
           <div className="animation damage">
             <p>ダメージ: {animation.data.damage}</p>
           </div>
         );
-      case AnimationEvent.POWER_CHANGE:
+      case GameEvent.POWER_CHANGE:
         return (
           <div className="animation power-change">
             <p>国力変動: {animation.data.amount}</p>
           </div>
         );
-      case AnimationEvent.SKILL_ACTIVATE:
+      case GameEvent.SKILL_ACTIVATE:
         return (
           <div className="animation skill">
             <p>スキル発動: {animation.data.skillName}</p>

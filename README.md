@@ -30,6 +30,28 @@ npm run build
 
 ### テスト
 
+#### CLIテストツール
+
+コンソールでゲームロジックをテストできます：
+
+```bash
+# 通常モード（プレイヤー入力あり）
+npm run play
+
+# 自動プレイモード（デバッグ用）
+AUTO_PLAY=true npm run play
+
+# ステージ選択
+STAGE_TYPE=mini npm run play      # ミニステージ（1ラウンド）
+STAGE_TYPE=two npm run play       # 2国家対戦（5ラウンド）
+STAGE_TYPE=three npm run play     # 3国家対戦（10ラウンド）
+
+# 組み合わせ
+AUTO_PLAY=true STAGE_TYPE=two npm run play
+```
+
+#### ユニットテスト
+
 ```bash
 npm test
 ```

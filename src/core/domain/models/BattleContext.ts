@@ -6,9 +6,9 @@ import { Unit } from './Unit';
  */
 export interface BattleContext {
   /** 攻撃側国家ID */
-  attackerNationId: number;
+  attackerNationId: string;
   /** 防御側国家ID */
-  defenderNationId: number;
+  defenderNationId: string;
 
   /** 攻撃順序配列 */
   attackOrder: Unit[];

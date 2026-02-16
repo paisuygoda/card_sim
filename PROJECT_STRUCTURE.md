@@ -107,7 +107,7 @@ async executeCommand(command: Command) {
   // 効果を実行
   for (const effect of command.effects) {
     await executeEffect(effect, gameState, bridge);
-    // ↑ bridge.playAnimation()でUI演出完了を待つ
+    // ↑ bridge.notifyGameEvent()でUI演出完了を待つ
   }
 }
 ```
@@ -140,14 +140,51 @@ async executeCommand(command: Command) {
 ✅ プロジェクト初期化（package.json、tsconfig.json等）
 ✅ 型定義（core/domain/models）
 ✅ ロジック関数の骨格（core/domain/logic）
-✅ GameManagerの骨格（core/application）
+✅ **GameManagerの基本実装（ゲーム進行制御）**
 ✅ IGameUIBridgeインターフェース
 ✅ Bridge実装（ReactUIBridge、MockUIBridge）
+✅ **CLIBridge実装（コンソールテスト用）**
 ✅ 状態管理（Zustand stores）
 ✅ カスタムフック（useGameActions、useAnimation）
 ✅ UIコンポーネント骨格
 ✅ 画面コンポーネント骨格
 ✅ App.tsxとエントリーポイント
+✅ **ゲーム進行の基本フロー（フェーズ遷移、ターン処理）**
+✅ **テストデータヘルパー（ステージ・国家・ユニット生成）**
+
+### 🎮 動作確認済み
+
+- ゲーム開始フェーズ → ラウンド処理 → ゲーム終了フェーズの流れ
+- プレイヤー国家とNPC国家の交互のターン処理
+- 内政フェーズでのコマンド選択（プレイヤー入力待ち、NPC自動選択）
+- フェーズ遷移時のUI通知（notifyGameEvent）
+- ゲーム状態更新の通知（updateGameState）
+- CLIでの自動プレイモード
+
+## 未実装項目（TODO）
+
+以下の機能はまだ実装されていません：
+
+### 高優先度
+- [ ] 効果実行（EffectExecutor.ts）
+  - 国力増減、内政回数増減、ユニットステータス変更など
+- [ ] ステート処理（StateManager.ts）
+  - ステート付与/削除、排他処理、残りターン数管理
+- [ ] 数値計算（GameMath.ts）
+  - 安全な四則演算、上限下限チェック
+
+### 中優先度
+- [ ] 戦闘ロジック（BattleLogic.ts）
+  - 攻撃順序決定、ダメージ計算、国力奪取
+- [ ] ユニット管理（UnitManager.ts）
+  - ダメージ処理、死亡判定、墓地移動
+- [ ] NPC思考（NPCLogic.ts）
+  - コマンド評価、行動判断
+
+### 低優先度
+- [ ] 優先順位管理（PriorityManager.ts）
+- [ ] ReactUIBridgeとストアの統合
+- [ ] UIコンポーネントの具体的な実装
 
 ## 次のステップ
 

@@ -2,14 +2,24 @@ import { Effect } from './Effect';
 import { TargetPattern } from './TargetPattern';
 
 /**
+ * スキルの演出種類を定義する列挙型
+ */
+export enum SkillVisualType {
+  /** ダメージ演出 */
+  ATTACK = 'ATTACK',
+}
+
+/**
  * スキルデータ構造
  * ユニットが戦闘時に使用する攻撃行動の詳細
  */
 export interface Skill {
   /** スキルID */
-  skillId: number;
+  skillId: string;
   /** スキル名 */
   name: string;
+  /** スキル演出種類 */
+  skillVisualType: SkillVisualType;
 
   /** 発動優先度（高いほど先） */
   priority: number;
@@ -17,7 +27,7 @@ export interface Skill {
   targetPattern: TargetPattern;
 
   /** 攻撃前効果 */
-  preEffects: Effect[];
+  preEffects: {target: 'SELF' | 'TARGET', effect: Effect}[];
   /** ユニットダメージ倍率 */
   damageRate: number;
   /** 国力奪取倍率 */

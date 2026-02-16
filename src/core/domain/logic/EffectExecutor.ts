@@ -1,5 +1,20 @@
-import { Effect, GameState, Unit, Nation } from '../models';
+import { Effect, GameState, Unit, Nation, EffectType, EffectTarget } from '../models';
 import { IGameUIBridge } from '../../infrastructure/IGameUIBridge';
+import {
+  executePowerChange,
+  executeActionChange,
+  executeUnitHPChange,
+  executeUnitAttackChange,
+  executeAddStateEffect,
+  executeRemoveState,
+  executeSummonUnit,
+  executeMoveUnit,
+  executeDestroyUnitEffect,
+  executeReviveLatestUnit,
+} from './effects';
+import { executeAddCommand, executeRemoveCommand } from './effects/commandEffects';
+import { findNationById } from './NationManager';
+import { findUnitById } from './UnitManager';
 
 /**
  * EffectExecutor - 効果実行エンジン
@@ -13,179 +28,289 @@ import { IGameUIBridge } from '../../infrastructure/IGameUIBridge';
  * @param effect 実行する効果
  * @param gameState ゲーム状態
  * @param bridge UIブリッジ
- * @param context 追加コンテキスト（攻撃者、対象ユニットなど）
+ * @param context 追加コンテキスト（発動者、選択対象）
  */
 export async function executeEffect(
   effect: Effect,
   gameState: GameState,
   bridge: IGameUIBridge,
   context?: {
-    attacker?: Unit;
-    targetUnit?: Unit;
-    targetNation?: Nation;
+    selfId?: string;
+    selectedId?: string;
+  },
+): Promise<void> {
+  // 対象を解決
+  const targets = resolveEffectTargets(effect, gameState, context);
+
+  // 効果タイプに応じて処理を実行
+  for (const targetId of targets) {
+    await executeEffectOnTarget(effect, gameState, bridge, targetId);
   }
-): Promise<void> {
-  // TODO: 実装
-  // effectTypeに応じて適切な処理関数を呼び出す
-  // 演出が必要な場合はbridge.playAnimationを呼び出す
 }
 
 /**
- * 国力増減効果
+ * 効果対象を解決
  * @param effect 効果データ
  * @param gameState ゲーム状態
- * @param targetNation 対象国家
- * @param bridge UIブリッジ
+ * @param context コンテキスト
+ * @returns 対象のリスト（ユニットまたは国家）
  */
-export async function executePowerChange(
+function resolveEffectTargets(
   effect: Effect,
   gameState: GameState,
-  targetNation: Nation,
-  bridge: IGameUIBridge
-): Promise<void> {
-  // TODO: 実装
+  context?: {
+    selfId?: string;
+    selectedId?: string;
+  }
+): Array<string> {
+  const targets: Array<string> = [];
+
+  switch (effect.target) {
+    case EffectTarget.SELF_UNIT:
+      if (context?.selfId) targets.push(context.selfId);
+      break;
+
+    case EffectTarget.SELF_NATION:
+      if (context?.selfId) {
+        const nation = gameState.nations.find((n) => n.nationId === context.selfId || n.nationId === context.selfId!.split('-')[0]);
+        if (nation) targets.push(nation.nationId);
+      }
+      break;
+
+    case EffectTarget.TARGET_UNIT:
+      if (context?.selectedId) targets.push(context.selectedId);
+      break;
+
+    case EffectTarget.TARGET_NATION:
+      if (context?.selectedId) {
+        const nation = gameState.nations.find((n) => n.nationId === context.selectedId || n.nationId === context.selectedId!.split('-')[0]);
+        if (nation) targets.push(nation.nationId);
+      }
+      break;
+
+    case EffectTarget.SELF_BATTLELINE:
+      if (context?.selfId) {
+        const nation = gameState.nations.find((n) => n.nationId === context.selfId || n.nationId === context.selfId!.split('-')[0]);
+        if (nation) targets.push(...nation.units.slice(0, 3).filter((u): u is Unit => u !== null).map((u) => u.unitId!));
+      }
+      break;
+
+    case EffectTarget.SELF_BENCH:
+      if (context?.selfId) {
+        const nation = gameState.nations.find((n) => n.nationId === context.selfId || n.nationId === context.selfId!.split('-')[0]);
+        if (nation) targets.push(...nation.units.slice(3).filter((u): u is Unit => u !== null).map((u) => u.unitId!));
+      }
+      break;
+
+    case EffectTarget.SELF_ALL_UNITS:
+      if (context?.selfId) {
+        const nation = gameState.nations.find((n) => n.nationId === context.selfId || n.nationId === context.selfId!.split('-')[0]);
+        if (nation) targets.push(...nation.units.filter((u): u is Unit => u !== null).map((u) => u.unitId!));
+      }
+      break;
+
+    case EffectTarget.TARGET_BATTLELINE:
+      if (context?.selectedId) {
+        const nation = gameState.nations.find((n) => n.nationId === context.selectedId || n.nationId === context.selectedId!.split('-')[0]);
+        if (nation) {
+          targets.push(...nation.units.slice(0, 3).filter((u): u is Unit => u !== null).map((u) => u.unitId!));
+        }
+      }
+      break;
+
+    case EffectTarget.TARGET_BENCH:
+      if (context?.selectedId) {
+        const nation = gameState.nations.find((n) => n.nationId === context.selectedId || n.nationId === context.selectedId!.split('-')[0]);
+        if (nation) {
+          targets.push(...nation.units.slice(3).filter((u): u is Unit => u !== null).map((u) => u.unitId!));
+        }
+      }
+      break;
+
+    case EffectTarget.TARGET_ALL_UNITS:
+      if (context?.selectedId) {
+        const nation = gameState.nations.find((n) => n.nationId === context.selectedId || n.nationId === context.selectedId!.split('-')[0]);
+        if (nation) {
+          targets.push(...nation.units.filter((u): u is Unit => u !== null).map((u) => u.unitId!));
+        }
+      }
+      break;
+
+    case EffectTarget.ALL_ENEMY_BATTLELINE:
+      if (context?.selfId) {
+        const ownerNation = gameState.nations.find((n) => n.nationId === context.selfId || n.nationId === context.selfId!.split('-')[0]);
+        if (ownerNation) {
+          gameState.nations
+            .filter((n) => ownerNation.hostileNationIds.includes(n.nationId))
+            .forEach((n) => targets.push(...n.units.slice(0, 3).filter((u): u is Unit => u !== null).map((u) => u.unitId!)));
+        }
+      }
+      break;
+
+    case EffectTarget.ALL_ENEMY_BENCH:
+      if (context?.selfId) {
+        const ownerNation = gameState.nations.find((n) => n.nationId === context.selfId || n.nationId === context.selfId!.split('-')[0]);
+        if (ownerNation) {
+          gameState.nations
+            .filter((n) => ownerNation.hostileNationIds.includes(n.nationId))
+            .forEach((n) => targets.push(...n.units.slice(3).filter((u): u is Unit => u !== null).map((u) => u.unitId!)));
+        }
+      }
+      break;
+
+    case EffectTarget.ALL_ENEMY_UNITS:
+      if (context?.selfId) {
+        const ownerNation = gameState.nations.find((n) => n.nationId === context.selfId || n.nationId === context.selfId!.split('-')[0]);
+        if (ownerNation) {
+          gameState.nations
+            .filter((n) => ownerNation.hostileNationIds.includes(n.nationId))
+            .forEach((n) => targets.push(...n.units.filter((u): u is Unit => u !== null).map((u) => u.unitId!)));
+        }
+      }
+      break;
+
+    case EffectTarget.ALL_ENEMY_NATION:
+      if (context?.selfId) {
+        const ownerNation = gameState.nations.find((n) => n.nationId === context.selfId || n.nationId === context.selfId!.split('-')[0]);
+        if (ownerNation) {
+          targets.push(
+            ...gameState.nations.filter((n) => ownerNation.hostileNationIds.includes(n.nationId)).map((n) => n.nationId)
+          );
+        }
+      }
+      break;
+
+    case EffectTarget.ALL_BATTLELINE:
+      gameState.nations.forEach((n) => targets.push(...n.units.slice(0, 3).filter((u): u is Unit => u !== null).map((u) => u.unitId!)));
+      break;
+
+    case EffectTarget.ALL_BENCH:
+      gameState.nations.forEach((n) => targets.push(...n.units.slice(3).filter((u): u is Unit => u !== null).map((u) => u.unitId!)));
+      break;
+
+    case EffectTarget.ALL_UNITS:
+      gameState.nations.forEach((n) => targets.push(...n.units.filter((u): u is Unit => u !== null).map((u) => u.unitId!)));
+      break;
+
+    case EffectTarget.ALL_NATIONS:
+      targets.push(...gameState.nations.map((n) => n.nationId));
+      break;
+  }
+
+  return targets;
 }
 
 /**
- * 内政回数増減効果
+ * 単一の対象に対して効果を実行
  * @param effect 効果データ
  * @param gameState ゲーム状態
- * @param targetNation 対象国家
  * @param bridge UIブリッジ
- */
-export async function executeActionChange(
-  effect: Effect,
-  gameState: GameState,
-  targetNation: Nation,
-  bridge: IGameUIBridge
-): Promise<void> {
-  // TODO: 実装
-}
-
-/**
- * ユニット召喚効果
- * @param effect 効果データ
- * @param gameState ゲーム状態
- * @param targetNation 対象国家
- * @param bridge UIブリッジ
- */
-export async function executeSummonUnit(
-  effect: Effect,
-  gameState: GameState,
-  targetNation: Nation,
-  bridge: IGameUIBridge
-): Promise<void> {
-  // TODO: 実装
-}
-
-/**
- * ユニットHP増減効果
- * @param effect 効果データ
- * @param gameState ゲーム状態
- * @param targetUnit 対象ユニット
- * @param bridge UIブリッジ
- */
-export async function executeUnitHPChange(
-  effect: Effect,
-  gameState: GameState,
-  targetUnit: Unit,
-  bridge: IGameUIBridge
-): Promise<void> {
-  // TODO: 実装
-}
-
-/**
- * ユニット攻撃力増減効果
- * @param effect 効果データ
- * @param gameState ゲーム状態
- * @param targetUnit 対象ユニット
- * @param bridge UIブリッジ
- */
-export async function executeUnitAttackChange(
-  effect: Effect,
-  gameState: GameState,
-  targetUnit: Unit,
-  bridge: IGameUIBridge
-): Promise<void> {
-  // TODO: 実装
-}
-
-/**
- * ステート付与効果
- * @param effect 効果データ
- * @param gameState ゲーム状態
  * @param target 対象（ユニットまたは国家）
- * @param bridge UIブリッジ
  */
-export async function executeAddState(
+async function executeEffectOnTarget(
   effect: Effect,
   gameState: GameState,
-  target: Unit | Nation,
-  bridge: IGameUIBridge
+  bridge: IGameUIBridge,
+  targetId: string,
 ): Promise<void> {
-  // TODO: 実装
+  let target: Unit | Nation | null = null;
+
+  switch (effect.effectType) {
+    case EffectType.POWER_GAIN:
+    case EffectType.POWER_LOSS:
+      target = findNationById(gameState, targetId);
+      if (target) {
+        await executePowerChange(effect, target, bridge);
+      }
+      break;
+
+    case EffectType.ACTION_GAIN:
+    case EffectType.ACTION_LOSS:
+      target = findNationById(gameState, targetId);
+      if (target) {
+        await executeActionChange(effect, target);
+      }
+      break;
+
+    case EffectType.UNIT_MAX_HP_GAIN:
+    case EffectType.UNIT_MAX_HP_LOSS:
+    case EffectType.UNIT_HP_GAIN:
+    case EffectType.UNIT_HP_LOSS:
+      target = findUnitById(gameState, targetId);
+      if (target) {
+        await executeUnitHPChange(effect, target, bridge);
+      }
+      break;
+
+    case EffectType.UNIT_ATTACK_GAIN:
+    case EffectType.UNIT_ATTACK_LOSS:
+      target = findUnitById(gameState, targetId);
+      if (target) {
+        await executeUnitAttackChange(effect, target);
+      }
+      break;
+
+    case EffectType.ADD_STATE:
+      target = findUnitById(gameState, targetId);
+      if (!target) {
+        target = findNationById(gameState, targetId);
+      }
+      if (target) {
+        await executeAddStateEffect(effect, target, bridge);
+      }
+      break;
+
+    case EffectType.REMOVE_STATE:
+      target = findUnitById(gameState, targetId);
+      if (!target) {
+        target = findNationById(gameState, targetId);
+      }
+      if (target) {
+        await executeRemoveState(effect, target, bridge);
+      }
+      break;
+
+    case EffectType.SUMMON_UNIT:
+      target = findNationById(gameState, targetId);
+      if (target) {
+        await executeSummonUnit(effect, target);
+      }
+      break;
+
+    case EffectType.MOVE_UNIT:
+      target = findUnitById(gameState, targetId);
+      if (target) {
+        await executeMoveUnit(effect, gameState, target);
+      }
+      break;
+
+    case EffectType.DESTROY_UNIT:
+      target = findUnitById(gameState, targetId);
+      if (target) {
+        await executeDestroyUnitEffect(effect, gameState, target);
+      }
+      break;
+
+    case EffectType.REVIVE_UNIT:
+      target = findNationById(gameState, targetId);
+      if (target) {
+        await executeReviveLatestUnit(effect, target);
+      }
+      break;
+
+    case EffectType.ADD_COMMAND:
+      target = findNationById(gameState, targetId);
+      if (target) {
+        await executeAddCommand(effect, target);
+      }
+      break;
+
+    case EffectType.REMOVE_COMMAND:
+      target = findNationById(gameState, targetId);
+      if (target) {
+        await executeRemoveCommand(effect, target);
+      }
+      break;
+  }
 }
 
-/**
- * ステート除去効果
- * @param effect 効果データ
- * @param gameState ゲーム状態
- * @param target 対象（ユニットまたは国家）
- * @param bridge UIブリッジ
- */
-export async function executeRemoveState(
-  effect: Effect,
-  gameState: GameState,
-  target: Unit | Nation,
-  bridge: IGameUIBridge
-): Promise<void> {
-  // TODO: 実装
-}
-
-/**
- * ユニット移動効果
- * @param effect 効果データ
- * @param gameState ゲーム状態
- * @param targetUnit 対象ユニット
- * @param bridge UIブリッジ
- */
-export async function executeMoveUnit(
-  effect: Effect,
-  gameState: GameState,
-  targetUnit: Unit,
-  bridge: IGameUIBridge
-): Promise<void> {
-  // TODO: 実装
-}
-
-/**
- * ユニット破壊効果
- * @param effect 効果データ
- * @param gameState ゲーム状態
- * @param targetUnit 対象ユニット
- * @param bridge UIブリッジ
- */
-export async function executeDestroyUnit(
-  effect: Effect,
-  gameState: GameState,
-  targetUnit: Unit,
-  bridge: IGameUIBridge
-): Promise<void> {
-  // TODO: 実装
-}
-
-/**
- * ユニット蘇生効果
- * @param effect 効果データ
- * @param gameState ゲーム状態
- * @param targetNation 対象国家
- * @param bridge UIブリッジ
- */
-export async function executeReviveUnit(
-  effect: Effect,
-  gameState: GameState,
-  targetNation: Nation,
-  bridge: IGameUIBridge
-): Promise<void> {
-  // TODO: 実装
-}

@@ -1,4 +1,4 @@
-import { GameState, State, GamePhase, Nation, Unit } from '../models';
+import { GameState, State, GamePhase, Nation } from '../models';
 
 /**
  * PriorityManager - 優先順位管理
@@ -20,11 +20,23 @@ export function createStateQueue(
   gameState: GameState,
   currentPhase: GamePhase
 ): State[] {
-  // TODO: 実装
   // 1. 国家の優先順位順にソート
+  const sortedNations = sortNationsByPriority(
+    gameState.nations,
+    gameState.currentTurnPlayer
+  );
+
   // 2. 各国家内で国家ステート → ユニットステートの順に収集
+  const allStates: State[] = [];
+  for (const nation of sortedNations) {
+    const states = collectStatesFromNation(nation);
+    allStates.push(...states);
+  }
+
   // 3. 各ステートの発動タイミングに現在フェーズが含まれているものだけを抽出
-  return [];
+  return allStates.filter(state => 
+    state.triggerTimings.includes(currentPhase)
+  );
 }
 
 /**
@@ -37,9 +49,16 @@ export function sortNationsByPriority(
   nations: Nation[],
   currentTurnPlayer: number
 ): Nation[] {
-  // TODO: 実装
   // 現在ターンプレイヤーを先頭に、以降は順送り
-  return [];
+  const sortedNations: Nation[] = [];
+  const nationCount = nations.length;
+  
+  for (let i = 0; i < nationCount; i++) {
+    const nationIndex = (currentTurnPlayer + i) % nationCount;
+    sortedNations.push(nations[nationIndex]);
+  }
+  
+  return sortedNations;
 }
 
 /**
@@ -48,8 +67,17 @@ export function sortNationsByPriority(
  * @returns ステート配列（国家ステート → ユニットステート順）
  */
 export function collectStatesFromNation(nation: Nation): State[] {
-  // TODO: 実装
+  const states: State[] = [];
+  
   // 1. 国家ステート
+  states.push(...nation.states);
+  
   // 2. ユニット配列の昇順でユニットステート
-  return [];
+  for (const unit of nation.units) {
+    if (unit !== null) {
+    states.push(...unit.states);
+    }
+  }
+  
+  return states;
 }

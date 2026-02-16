@@ -16,8 +16,8 @@ const MIN_VALUE = 0;
  * @returns 計算結果（上限・下限適用後）
  */
 export function safeAdd(a: number, b: number): number {
-  // TODO: 実装
-  return 0;
+  const result = a + b;
+  return clamp(result);
 }
 
 /**
@@ -27,8 +27,8 @@ export function safeAdd(a: number, b: number): number {
  * @returns 計算結果（上限・下限適用後）
  */
 export function safeSubtract(a: number, b: number): number {
-  // TODO: 実装
-  return 0;
+  const result = a - b;
+  return clamp(result);
 }
 
 /**
@@ -38,8 +38,8 @@ export function safeSubtract(a: number, b: number): number {
  * @returns 計算結果（切り上げ、上限・下限適用後）
  */
 export function safeMultiply(a: number, b: number): number {
-  // TODO: 実装
-  return 0;
+  const result = Math.ceil(a * b);
+  return clamp(result);
 }
 
 /**
@@ -49,8 +49,8 @@ export function safeMultiply(a: number, b: number): number {
  * @returns 計算結果（切り上げ後）
  */
 export function safeDivide(a: number, b: number): number {
-  // TODO: 実装
-  return 0;
+  if (b === 0) return 0;
+  return Math.ceil(a / b);
 }
 
 /**
@@ -60,8 +60,8 @@ export function safeDivide(a: number, b: number): number {
  * @returns 計算結果
  */
 export function calculatePercentage(base: number, percentage: number): number {
-  // TODO: 実装
-  return 0;
+  const result = Math.ceil((base * percentage) / 100);
+  return clamp(result);
 }
 
 /**
@@ -76,6 +76,5 @@ export function clamp(
   min: number = MIN_VALUE,
   max: number = MAX_VALUE
 ): number {
-  // TODO: 実装
-  return 0;
+  return Math.min(Math.max(value, min), max);
 }

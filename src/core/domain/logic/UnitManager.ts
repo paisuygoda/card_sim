@@ -1,4 +1,4 @@
-import { Unit, Nation, GameState } from '../models';
+import { Unit, GameState, GamePhase, EffectType, Effect, EffectTarget, ValueType } from '../models';
 
 /**
  * UnitManager - ユニット管理
@@ -7,87 +7,74 @@ import { Unit, Nation, GameState } from '../models';
  */
 
 /**
- * ユニットダメージ処理（設計書4.5）
- * HPの増減と死亡判定を行う
- * 
+ * ユニット軍事力を計算（設計書3.3.3）
+ * ユニットのHPと攻撃力の合計 * ステート補正
  * @param unit 対象ユニット
- * @param damage ダメージ量（負数で回復）
- * @param gameState ゲーム状態
- * @param masterStates ステートマスターデータ
- * @returns ユニットが死亡したかどうか
- */
-export function applyUnitDamage(
-  unit: Unit,
-  damage: number,
-  gameState: GameState,
-  masterStates: Map<number, any>
-): boolean {
-  // TODO: 実装
-  // 1. 現在HPに指定値を加算
-  // 2. 加算後のHPが最大HPを超える場合、最大HPに設定
-  // 3. 加算後のHPが0未満の場合：
-  //    - 現在HPを0に設定
-  //    - 死亡ステート付与を試みる
-  //    - 死亡ステートが付与された場合、墓地に移動
-  // 4. 死亡したかどうかを返す
-  return false;
-}
-
-/**
- * ユニットを墓地に移動
- * @param unit 対象ユニット
- * @param nation 所属国家
- */
-export function moveUnitToGraveyard(unit: Unit, nation: Nation): void {
-  // TODO: 実装
-  // 1. ユニット配列から削除（該当位置をnullに）
-  // 2. 墓地配列にpush
-}
-
-/**
- * ユニットを蘇生
- * @param unit 対象ユニット
- * @param nation 所属国家
- * @param position 配置位置（0: 前衛、1: 中衛、2: 後衛、3～7: ベンチ）
- * @returns 蘇生成功/失敗
- */
-export function reviveUnit(
-  unit: Unit,
-  nation: Nation,
-  position: number
-): boolean {
-  // TODO: 実装
-  // 1. 墓地から削除
-  // 2. 指定位置が空いていればユニット配列に配置
-  // 3. HPを最大HPに戻す
-  return false;
-}
-
-/**
- * ユニットの位置を移動
- * @param unit 対象ユニット
- * @param nation 所属国家
- * @param newPosition 新しい位置
- * @returns 移動成功/失敗
- */
-export function moveUnit(
-  unit: Unit,
-  nation: Nation,
-  newPosition: number
-): boolean {
-  // TODO: 実装
-  return false;
-}
-
-/**
- * 軍事力を計算（設計書3.3.3）
- * 前線に出ているユニットのHPと攻撃力の合計 * ステート補正
- * @param nation 対象国家
  * @returns 軍事力
  */
-export function calculateMilitaryPower(nation: Nation): number {
-  // TODO: 実装
-  // 前線（インデックス0～2）のユニットのHP+攻撃力の合計
-  // ステート補正を掛ける
-  return 0;
+export function calculateUnitMilitaryPower(unit: Unit): number {
+  // 基礎軍事力
+  let basePower = (unit.maxHP + unit.attack) * unit.currentHP / unit.maxHP;
+  
+  // ステート補正を計算
+  // triggerTimingsにSCOUT_CALCULATIONを含むステートを抽出し、補正値を計算
+  const scoutEffects = unit.states.filter(state => state.triggerTimings.includes(GamePhase.SCOUT_CALCULATION))
+    .reduce((effects, state) => {
+    return effects.concat(state.effects.filter(effect => [EffectType.MILITARY_POWER_BUFF, EffectType.MILITARY_POWER_DEBUFF].includes(effect.effectType) && effect.target === EffectTarget.SELF_UNIT));
+  }, [] as Effect[]);
+  const stateMultiplier = scoutEffects.filter(effect => effect.valueType === ValueType.PERCENTAGE).reduce((acc, effect) => acc * (effect.effectType === EffectType.MILITARY_POWER_BUFF ? (1.0 + effect.value) : (1.0 - effect.value)), 1.0);
+  const stateFlatBonus = scoutEffects.filter(effect => effect.valueType === ValueType.FIXED).reduce((acc, effect) => acc + (effect.effectType === EffectType.MILITARY_POWER_BUFF ? effect.value : -effect.value), 0);
+  
+  // ステート補正を適用
+  return Math.floor(basePower * stateMultiplier + stateFlatBonus);
+}
+
+/**
+ * ユニットの実攻撃力を計算
+ * ステート補正を考慮
+ * @param unit 対象ユニット
+ * @returns 実攻撃力
+ */
+export function calculateUnitEffectiveAttack(unit: Unit): number {
+  let effectiveAttack = unit.attack;
+  
+  // ステート補正を計算
+  const attackBuffEffects = unit.states.filter(state => state.triggerTimings.includes(GamePhase.BATTLE_CALCULATION))
+    .reduce((effects, state) => {
+    return effects.concat(state.effects.filter(effect => [EffectType.UNIT_ATTACK_BUFF, EffectType.UNIT_ATTACK_DEBUFF].includes(effect.effectType) && effect.target === EffectTarget.SELF_UNIT));
+  }, [] as Effect[]);
+  
+  const attackMultiplier = attackBuffEffects.filter(effect => effect.valueType === ValueType.PERCENTAGE).reduce((acc, effect) => acc * (effect.effectType === EffectType.UNIT_ATTACK_BUFF ? (1.0 + effect.value) : (1.0 - effect.value)), 1.0);
+  const attackFlatBonus = attackBuffEffects.filter(effect => effect.valueType === ValueType.FIXED).reduce((acc, effect) => acc + (effect.effectType === EffectType.UNIT_ATTACK_BUFF ? effect.value : -effect.value), 0);
+  
+  effectiveAttack = Math.floor(effectiveAttack * attackMultiplier + attackFlatBonus);
+  
+  return Math.max(0, effectiveAttack);
+}
+/**
+ *  gameState内の全ユニットを走査し、指定IDのユニットを取得
+ * @param gameState ゲーム状態
+ * @param unitId ユニットID
+ * @returns ユニットまたはnull
+ */
+export function findUnitById(
+  gameState: GameState,
+  unitId: string
+): Unit | null {
+  for (const nation of gameState.nations) {
+    for (const unit of nation.units) {
+      if (unit && unit.unitId === unitId) {
+        return unit;
+      }
+    }
+  }
+  return null;
+} 
+
+export const extractNationIdFromUnitId = (unitId: string): string | null => {
+  const parts = unitId.split('-');
+  if (parts.length < 2) {
+    return null;
+  }
+  return parts[0];
 }

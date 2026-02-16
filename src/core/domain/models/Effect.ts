@@ -19,10 +19,18 @@ export enum EffectType {
   UNIT_HP_GAIN = 'UNIT_HP_GAIN',
   /** ユニットHP減 */
   UNIT_HP_LOSS = 'UNIT_HP_LOSS',
-  /** ユニット攻撃力増 */
+  /** ユニット攻撃力増(永続) */
   UNIT_ATTACK_GAIN = 'UNIT_ATTACK_GAIN',
-  /** ユニット攻撃力減 */
+  /** ユニット攻撃力減(永続) */
   UNIT_ATTACK_LOSS = 'UNIT_ATTACK_LOSS',
+  /** 軍事力増 */
+  MILITARY_POWER_BUFF = 'MILITARY_POWER_BUFF',
+  /** 軍事力減 */
+  MILITARY_POWER_DEBUFF = 'MILITARY_POWER_DEBUFF',
+  /** ユニット攻撃力増(計算中のみ) */
+  UNIT_ATTACK_BUFF = 'UNIT_ATTACK_BUFF',
+  /** ユニット攻撃力減(計算中のみ) */
+  UNIT_ATTACK_DEBUFF = 'UNIT_ATTACK_DEBUFF',
   /** ステート付与 */
   ADD_STATE = 'ADD_STATE',
   /** ステート除去 */
@@ -44,7 +52,7 @@ export enum EffectType {
 /**
  * 効果の演出種類を定義する列挙型
  */
-export enum VisualType {
+export enum EffectVisualType {
   /** 演出なし */
   NONE = 'NONE',
   /** ダメージ演出 */
@@ -86,9 +94,9 @@ export enum EffectTarget {
     /** 対象国家 */
     TARGET_NATION = 'TARGET_NATION',
     /** 全敵国の前衛 */
-    ALL_ENEMY_BATTLELINE = 'ENEMY_BATTLELINE',
+    ALL_ENEMY_BATTLELINE = 'ALL_ENEMY_BATTLELINE',
     /** 全敵国のベンチ */
-    ALL_ENEMY_BENCH = 'ENEMY_BENCH',
+    ALL_ENEMY_BENCH = 'ALL_ENEMY_BENCH',
     /** 全敵国の全ユニット */
     ALL_ENEMY_UNITS = 'ALL_ENEMY_UNITS',
     /** 全敵国家 */
@@ -127,11 +135,47 @@ export interface Effect {
   /** 効果種類 */
   effectType: EffectType;
   /** 効果演出種類 */
-  visualType: VisualType;
+  visualType: EffectVisualType;
   /** 対象種類 */
   target: EffectTarget;
   /** 効果値種類 */
   valueType: ValueType;
   /** 効果値 */
   value: number;
+  /** 効果詳細 */
+  effectDetail?: string;
+}
+
+export const validateEffect = (effect: Effect): boolean => {
+  if (
+    !effect.effectType ||
+    !effect.visualType ||
+    !effect.target ||
+    !effect.valueType ||
+    effect.value === undefined || effect.value === null
+  ) {
+    return false;
+  }
+
+  // 効果詳細が必要な効果の場合、効果詳細が存在することを確認
+  const effectsRequiringDetail = [
+    EffectType.SUMMON_UNIT,
+    EffectType.ADD_STATE,
+    EffectType.REMOVE_STATE,
+    EffectType.ADD_COMMAND,
+    EffectType.REMOVE_COMMAND,
+  ];
+  if (effectsRequiringDetail.includes(effect.effectType)) {
+    if (!effect.effectDetail) {
+      return false;
+    }
+  }
+
+  // MOVE_UNIT効果の場合、効果値(移動先)が有効なインデックスであることを確認
+  if (effect.effectType === EffectType.MOVE_UNIT) {
+    if (!Number.isInteger(effect.value) || effect.value < -2 || effect.value > 7) {
+      return false;
+    }
+  }
+  return true;
 }

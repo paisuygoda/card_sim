@@ -3,6 +3,12 @@
  * ゲーム内のどの段階で効果が発動するかを定義
  */
 export enum GamePhase {
+  /** 常時 */
+  ALWAYS = 'ALWAYS',
+  /** 常時_軍事力計算時 */
+  SCOUT_CALCULATION = 'SCOUT_CALCULATION',
+  /** 常時_戦闘計算時 */
+  BATTLE_CALCULATION = 'BATTLE_CALCULATION',
   /** ゲーム開始時 */
   GAME_START = 'GAME_START',
   /** ラウンド開始時 */

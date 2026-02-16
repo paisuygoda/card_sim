@@ -1,6 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { useUIStateStore } from '@store/useUIStateStore';
-import { AnimationEvent } from '@core/infrastructure/IGameUIBridge';
+import { GameEvent } from '@core/infrastructure/IGameUIBridge';
 
 /**
  * useAnimation - アニメーション管理カスタムフック
@@ -24,7 +24,7 @@ export function useAnimation() {
    * 特定のアニメーションイベントかどうかをチェック
    */
   const isAnimationType = useCallback(
-    (eventType: AnimationEvent) => {
+    (eventType: GameEvent) => {
       return animation?.eventType === eventType;
     },
     [animation]
@@ -49,7 +49,7 @@ export function useAnimation() {
  * @param duration アニメーション時間（ms）
  */
 export function useAnimationEffect(
-  eventType: AnimationEvent,
+  eventType: GameEvent,
   onAnimate: (data: any) => void,
   duration: number = 500
 ) {
