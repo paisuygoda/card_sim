@@ -1,5 +1,6 @@
 import React from 'react';
 import { useGameStateStore } from '@store/useGameStateStore';
+import { MasterData } from '@core/domain/master';
 import { NationPanel } from './NationPanel';
 import { PhaseDisplay } from './PhaseDisplay';
 
@@ -12,6 +13,14 @@ import { PhaseDisplay } from './PhaseDisplay';
 
 export const GameBoard: React.FC = () => {
   const gameState = useGameStateStore((state) => state.gameState);
+  let stage = null;
+  try {
+    if (gameState) {
+      stage = MasterData.getStage(gameState.stageId);
+    }
+  } catch {
+    stage = null;
+  }
 
   // TODO: 実装
   // - 各国家のNationPanelを表示
@@ -32,6 +41,8 @@ export const GameBoard: React.FC = () => {
         currentPhase={gameState.currentPhase}
         currentRound={gameState.currentRound}
         currentTurnPlayer={gameState.currentTurnPlayer}
+        maxRound={gameState.roundLimit}
+        currentNationName={gameState.nations[gameState.currentTurnPlayer]?.name}
       />
       <div className="nations">
         {gameState.nations.map((nation, index) => (
@@ -39,6 +50,7 @@ export const GameBoard: React.FC = () => {
             key={nation.nationId}
             nation={nation}
             isCurrentTurn={index === gameState.currentTurnPlayer}
+            powerWinThreshold={stage?.powerWinThreshold ?? null}
           />
         ))}
       </div>

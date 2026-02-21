@@ -14,6 +14,7 @@ export const COMMAND_MASTER: Record<string, Command> = {
     costPower: 0,
     unitSpace: 0,
     targetType: CommandTargetType.SELF_NATION,
+    description: '国力を50獲得する。内政回数を1消費。',
     effects: [
       EFFECT_MASTER["consumeAction"],
       EFFECT_MASTER["powerGain50"],
@@ -29,6 +30,7 @@ export const COMMAND_MASTER: Record<string, Command> = {
     costPower: 50,
     unitSpace: 0,
     targetType: CommandTargetType.SELF_NATION,
+    description: '国力を50消費して全ユニットのHP・攻撃力を20増加する。内政回数を1消費。',
     effects: [
       EFFECT_MASTER["consumeAction"],
       EFFECT_MASTER["powerLoss50"],
@@ -65,6 +67,7 @@ export const COMMAND_MASTER: Record<string, Command> = {
     costPower: 50,
     unitSpace: 1,
     targetType: CommandTargetType.SELF_NATION,
+    description: '国力を50消費して歩兵を1体召喚する。内政回数を1消費。',
     effects: [
       EFFECT_MASTER["consumeAction"],
       EFFECT_MASTER["powerLoss50"],
@@ -81,6 +84,7 @@ export const COMMAND_MASTER: Record<string, Command> = {
     costPower: 0,
     unitSpace: 0,
     targetType: CommandTargetType.ENEMY_NATION,
+    description: '敵国に戦闘を仕掛ける。',
     effects: [],
   },
   // 行動：訓練
@@ -93,6 +97,7 @@ export const COMMAND_MASTER: Record<string, Command> = {
     costPower: 0,
     unitSpace: 0,
     targetType: CommandTargetType.SELF_NATION,
+    description: '全ユニットの攻撃力を10%増加する。',
     effects: [
       {
         effectType: EffectType.UNIT_ATTACK_GAIN,

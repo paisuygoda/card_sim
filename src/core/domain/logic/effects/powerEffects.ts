@@ -48,7 +48,7 @@ export async function executePowerChange(
     effect.effectType === EffectType.POWER_GAIN ? GameEvent.POWER_HEAL : GameEvent.POWER_DAMAGE,
     {
       nationId: targetNation.nationId,
-      diffValue: targetNation.power - oldPower,
+      amount: targetNation.power - oldPower,
       visualType: effect.visualType,
     }
   );

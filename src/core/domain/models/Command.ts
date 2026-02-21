@@ -63,6 +63,8 @@ export interface Command {
 
   /** 効果配列（順番に処理） */
   effects: Effect[];
+  /** コマンドの説明文（ホバー時に表示） */
+  description?: string;
 }
 
 export const validateCommand = (command: Command): boolean => {

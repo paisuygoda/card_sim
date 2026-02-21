@@ -6,3 +6,4 @@
 export * from './BattleScreen';
 export * from './DomesticScreen';
 export * from './GameEndScreen';
+export * from './StageSelectScreen';

@@ -15,4 +15,8 @@ export interface Stage {
   initialNations: Nation[];
   /** 各国家の基礎内政回数 */
   baseDomesticActions: number;
+  /** ステージ表示タイトル */
+  title?: string;
+  /** ステージ説明文 */
+  description?: string;
 }

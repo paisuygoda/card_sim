@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAnimation } from '@ui/hooks/useAnimation';
+import { useUIStateStore } from '@store/useUIStateStore';
 import { GameEvent } from '@core/infrastructure/IGameUIBridge';
 
 /**
@@ -11,42 +12,76 @@ import { GameEvent } from '@core/infrastructure/IGameUIBridge';
 
 export const AnimationDisplay: React.FC = () => {
   const { animation, isAnimating, onAnimationComplete } = useAnimation();
+  const animationQueue = useUIStateStore((state) => state.animationQueue);
+  const dequeueAnimation = useUIStateStore((state) => state.dequeueAnimation);
 
-  // TODO: 実装
-  // - アニメーション種類に応じた演出を表示
-  // - CSS Transition/Animationを使った演出
-  // - 演出完了後にonAnimationCompleteを呼び出し
+  // キューにアニメーションがあり、再生中でない場合は自動でdequeue
+  // （ReactUIBridge.waitUI() のデッドロックを防ぐ）
+  useEffect(() => {
+    if (animationQueue.length > 0 && !isAnimating) {
+      dequeueAnimation();
+    }
+  }, [animationQueue, isAnimating, dequeueAnimation]);
+
+  // isAnimatingがtrueになった時、500ms後にonAnimationCompleteを自動呼び出し
+  // animationを依存配列に含めることで同じアニメーションで二重実行しない
+  useEffect(() => {
+    if (!isAnimating) return;
+
+    const timer = setTimeout(() => {
+      onAnimationComplete();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [animation, isAnimating, onAnimationComplete]);
 
   if (!isAnimating || !animation) {
     return null;
   }
 
+  // データの安全な取得（nullチェック）
+  const getData = () => {
+    return animation.data || {};
+  };
+
   const renderAnimation = () => {
-    switch (animation.eventType) {
-      case GameEvent.UNIT_DAMAGE:
-        return (
-          <div className="animation damage">
-            <p>ダメージ: {animation.data.damage}</p>
-          </div>
-        );
-      case GameEvent.POWER_CHANGE:
-        return (
-          <div className="animation power-change">
-            <p>国力変動: {animation.data.amount}</p>
-          </div>
-        );
-      case GameEvent.SKILL_ACTIVATE:
-        return (
-          <div className="animation skill">
-            <p>スキル発動: {animation.data.skillName}</p>
-          </div>
-        );
-      default:
-        return (
-          <div className="animation generic">
-            <p>{animation.eventType}</p>
-          </div>
-        );
+    try {
+      const data = getData();
+      
+      switch (animation.eventType) {
+        case GameEvent.UNIT_DAMAGE:
+          return (
+            <div className="animation damage">
+              <p>ダメージ: {data.amount ?? 0}</p>
+            </div>
+          );
+        case GameEvent.POWER_DAMAGE:
+        case GameEvent.POWER_HEAL:
+          return (
+            <div className="animation power-change">
+              <p>国力変動: {data.amount ?? 0}</p>
+            </div>
+          );
+        case GameEvent.SKILL_ACTIVATE:
+          return (
+            <div className="animation skill">
+              <p>スキル発動: {data.skillName ?? 'Unknown'}</p>
+            </div>
+          );
+        default:
+          return (
+            <div className="animation generic">
+              <p>{animation.eventType}</p>
+            </div>
+          );
+      }
+    } catch (error) {
+      console.error('アニメーション表示エラー:', error);
+      return (
+        <div className="animation error">
+          <p>エラー</p>
+        </div>
+      );
     }
   };
 

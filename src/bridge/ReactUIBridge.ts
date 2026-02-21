@@ -83,7 +83,7 @@ export class ReactUIBridge implements IGameUIBridge {
     useUIStateStore.getState().addLog(message, level);
     
     // 開発環境ではコンソールにも出力
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       const logFn = level === 'error' ? console.error : level === 'warning' ? console.warn : console.log;
       logFn(`[ReactUIBridge][${level}] ${message}`);
     }

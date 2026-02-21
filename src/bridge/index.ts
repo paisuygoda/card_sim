@@ -4,4 +4,3 @@
  */
 
 export * from './ReactUIBridge';
-export * from './MockUIBridge';

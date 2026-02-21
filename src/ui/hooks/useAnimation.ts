@@ -10,7 +10,7 @@ import { GameEvent } from '@core/infrastructure/IGameUIBridge';
  */
 
 export function useAnimation() {
-  const animation = useUIStateStore((state) => state.animation);
+  const animation = useUIStateStore((state) => state.currentAnimation);
   const completeAnimation = useUIStateStore((state) => state.completeAnimation);
 
   /**

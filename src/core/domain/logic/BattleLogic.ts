@@ -176,9 +176,11 @@ export async function executeUnitAttacks(
     battleContext.targetUnits = determineTargets(battleContext.currentAttacker, attackerNation, defenderNation);
 
     // スキル発動通知
+    const activatingSkill = MasterData.getSkill(battleContext.currentAttacker.skillId);
     await bridge.notifyGameEvent(GameEvent.SKILL_ACTIVATE, {
       attackerId: battleContext.currentAttacker.unitId!,
       skillId: battleContext.currentAttacker.skillId,
+      skillName: activatingSkill.name,
       targets: battleContext.targetUnits.map(t => t?.unitId ?? null),
     });
 

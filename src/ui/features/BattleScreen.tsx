@@ -1,6 +1,5 @@
 import React from 'react';
 import { useGameStateStore } from '@store/useGameStateStore';
-import { BattleArea } from '@ui/components/BattleArea';
 
 /**
  * BattleScreen - 戦闘画面

@@ -42,7 +42,6 @@ src/
 │
 ├── bridge/                   # UI連携実装
 │   ├── ReactUIBridge.ts      # 本番用実装（Zustand連携）
-│   ├── MockUIBridge.ts       # 開発・デバッグ用モック
 │   └── index.ts
 │
 ├── store/                    # 状態管理（Zustand）
@@ -123,7 +122,6 @@ async executeCommand(command: Command) {
 ### フェーズ1: モデルとロジック実装
 1. `core/domain/logic`の各関数を実装
 2. テスト駆動で各ロジックを検証
-3. MockUIBridgeでゲームフローを確認
 
 ### フェーズ2: UI連携
 1. ReactUIBridgeの実装
@@ -142,7 +140,7 @@ async executeCommand(command: Command) {
 ✅ ロジック関数の骨格（core/domain/logic）
 ✅ **GameManagerの基本実装（ゲーム進行制御）**
 ✅ IGameUIBridgeインターフェース
-✅ Bridge実装（ReactUIBridge、MockUIBridge）
+✅ Bridge実装（ReactUIBridge）
 ✅ **CLIBridge実装（コンソールテスト用）**
 ✅ 状態管理（Zustand stores）
 ✅ カスタムフック（useGameActions、useAnimation）

@@ -95,6 +95,7 @@ export type StateEventData = {
 export type SkillActivateData = {
   attackerId: string;
   skillId: string;
+  skillName: string;
   targets: (string | null)[];
 };
 

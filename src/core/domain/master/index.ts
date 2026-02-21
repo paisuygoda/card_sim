@@ -4,6 +4,7 @@ import { EFFECT_MASTER } from "./EffectMaster";
 import { NATION_MASTER } from "./NationMaster";
 import { SKILL_MASTER } from "./SkillMaster";
 import { STATE_MASTER } from "./StateMaster";
+import { STAGE_MASTER } from "./StageMaster";
 import { UNIT_MASTER } from "./UnitMaster";
 
 export const MasterData = {
@@ -45,4 +46,9 @@ export const MasterData = {
             ownerNationId: ownerNationId,
         };
     },
+    getStage: (id: number) => {
+        const stage = STAGE_MASTER[id];
+        if (!stage) throw new Error(`Stage ID ${id} not found`);
+        return stage;
+    }
 };

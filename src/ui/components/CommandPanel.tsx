@@ -1,5 +1,5 @@
 import React from 'react';
-import { Command } from '@core/domain/models';
+import { Command, Nation } from '@core/domain/models';
 
 /**
  * CommandPanel - コマンド選択パネル
@@ -11,33 +11,50 @@ interface CommandPanelProps {
   commands: Command[];
   onCommandSelect: (command: Command) => void;
   disabled?: boolean;
+  nation: Nation;
 }
 
-export const CommandPanel: React.FC<CommandPanelProps> = ({
-  commands,
-  onCommandSelect,
-  disabled = false,
-}) => {
-  // TODO: 実装
-  // - コマンドリストを表示
-  // - 各コマンドをボタンとして表示
-  // - クリック時にonCommandSelectを呼び出し
-
+export const CommandPanel: React.FC<CommandPanelProps> = React.memo((
+  {
+    commands,
+    onCommandSelect,
+    disabled = false,
+    nation,
+  }
+) => {
   return (
     <div className="command-panel">
       <h3>コマンド選択</h3>
       <div className="command-list">
-        {commands.map((command) => (
-          <button
-            key={command.commandId}
-            onClick={() => onCommandSelect(command)}
-            disabled={disabled}
-            className="command-button"
-          >
-            {command.name}
-          </button>
-        ))}
+        {commands.map((command) => {
+          const nullCount = nation.units.filter((u) => u === null).length;
+          const isDisabled =
+            disabled ||
+            nation.remainingActions < command.costAction ||
+            nation.power < command.costPower ||
+            nullCount < command.unitSpace;
+
+          return (
+            <button
+              key={command.commandId}
+              onClick={() => onCommandSelect(command)}
+              disabled={isDisabled}
+              className="command-button"
+              title={command.description}
+            >
+              {command.name}
+              {command.costAction > 0 && (
+                <span className="command-cost-action"> 行動:{command.costAction}</span>
+              )}
+              {command.costPower > 0 && (
+                <span className="command-cost-power"> 国力:{command.costPower}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
-};
+});
+
+CommandPanel.displayName = 'CommandPanel';

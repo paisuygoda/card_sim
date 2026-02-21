@@ -2,19 +2,22 @@ import React from 'react';
 import { useGameStateStore } from '@store/useGameStateStore';
 
 /**
+ * GameEndScreenProps
+ */
+interface GameEndScreenProps {
+  onReturnToSelect?: () => void;
+  onReplay?: () => void;
+}
+
+/**
  * GameEndScreen - ゲーム終了画面
- * 
+ *
  * ゲーム終了時の結果表示
  * 勝者、各国家の最終国力など
  */
 
-export const GameEndScreen: React.FC = () => {
+export const GameEndScreen: React.FC<GameEndScreenProps> = ({ onReturnToSelect, onReplay }) => {
   const gameState = useGameStateStore((state) => state.gameState);
-
-  // TODO: 実装
-  // - 勝者の決定と表示
-  // - 各国家の最終国力
-  // - リプレイボタン
 
   if (!gameState) {
     return null;
@@ -39,9 +42,16 @@ export const GameEndScreen: React.FC = () => {
           </div>
         ))}
       </div>
-      <button onClick={() => window.location.reload()}>
-        もう一度プレイ
-      </button>
+      {onReturnToSelect && (
+        <button onClick={onReturnToSelect}>
+          ステージ選択に戻る
+        </button>
+      )}
+      {onReplay && (
+        <button onClick={onReplay}>
+          もう一度プレイ
+        </button>
+      )}
     </div>
   );
 };
