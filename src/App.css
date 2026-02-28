@@ -1,5 +1,38 @@
 /* アプリケーション全体のスタイル */
 
+/* CSS変数定義 */
+:root {
+  /* 国力ゲージの色（進捗率ごと） */
+  --power-color-critical: #f44336;  /* 0-29% */
+  --power-color-warning: #ff9800;   /* 30-59% */
+  --power-color-good: #2196f3;      /* 60-89% */
+  --power-color-excellent: #4caf50; /* 90%+ */
+  
+  /* 国力変動の色 */
+  --power-damage-color: #ff6633;
+  --power-heal-color: #33ff77;
+
+  /* ステート演出の色 */
+  --state-neutral-border: #9ca3af;
+  --state-neutral-bg-start: rgba(40, 40, 50, 0.96);
+  --state-neutral-bg-end: rgba(60, 60, 80, 0.96);
+  --state-neutral-label: #d1d5db;
+  --state-neutral-name: #fff;
+  --state-neutral-target: #cbd5e1;
+  
+  --state-buff-border: #10b981;
+  --state-buff-bg-start: rgba(20, 60, 40, 0.96);
+  --state-buff-bg-end: rgba(16, 185, 129, 0.2);
+  --state-buff-label: #6ee7b7;
+  --state-buff-name: #10b981;
+  
+  --state-debuff-border: #ef4444;
+  --state-debuff-bg-start: rgba(60, 20, 20, 0.96);
+  --state-debuff-bg-end: rgba(239, 68, 68, 0.2);
+  --state-debuff-label: #fca5a5;
+  --state-debuff-name: #ef4444;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -99,6 +132,7 @@ body {
 
 /* ユニットカード */
 .unit-card {
+  position: relative; /* selected-mark の配置のため */
   border: 1px solid #ccc;
   padding: 0.5rem;
   border-radius: 4px;
@@ -175,13 +209,412 @@ body {
   border-radius: 8px;
   font-size: 1.5rem;
   z-index: 1000;
-  animation: fadeInOut 1s ease-in-out;
+  animation: fadeInOut 0.5s ease-in-out;
 }
 
 @keyframes fadeInOut {
   0% { opacity: 0; }
-  50% { opacity: 1; }
+  40% { opacity: 1; }
   100% { opacity: 0; }
+}
+
+/* Task 2-2-1: HPバートランジション */
+.hp-bar-fill {
+  transition: width 0.3s ease-in-out, background-color 0.3s ease;
+}
+
+/* Task 2-3-1: 国力ゲージ */
+.power-gauge {
+  width: 100%;
+  height: 12px;
+  background-color: rgba(42, 42, 42, 0.6);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.power-gauge-fill {
+  height: 100%;
+  background-color: var(--power-color-excellent);
+  transition: width 0.6s ease-out, background-color 0.6s ease-out;
+}
+
+/* Task 2-2-2: 攻撃者ハイライト（パルスアニメーション） */
+@keyframes attackerPulse {
+  0%,  100% { box-shadow: 0 0 0 2px #f59e0b; }
+  50%        { box-shadow: 0 0 14px 5px rgba(245, 158, 11, 0.7); }
+}
+
+.unit-card.current-attacker {
+  border: 2px solid #f59e0b;
+  background-color: #fffbeb;
+  animation: attackerPulse 0.9s ease-in-out infinite;
+}
+
+/* ユニット選択UI: 選択可能なユニットカード */
+.unit-card.selectable {
+  border: 2px solid #2196F3; /* 青枠 */
+  box-shadow: 0 0 10px rgba(33, 150, 243, 0.5); /* グロー効果 */
+  cursor: pointer;
+}
+
+.unit-card.selectable:hover {
+  transform: scale(1.05); /* 既存のホバー効果を維持 */
+  box-shadow: 0 0 15px rgba(33, 150, 243, 0.7); /* ホバー時にグロー強化 */
+}
+
+.unit-card.selectable:focus {
+  outline: 3px solid #2196F3;
+  outline-offset: 2px;
+}
+
+/* ユニット選択UI: 選択中のユニットカード */
+.unit-card.selected {
+  border: 2px solid #FF9800; /* オレンジ枠 */
+  background-color: rgba(255, 152, 0, 0.1); /* 薄いオレンジ背景 */
+}
+
+/* ユニット選択UI: 選択不可のユニットカード */
+.unit-card:not(.selectable) {
+  cursor: default;
+}
+
+/* ユニット選択UI: 選択中マーク */
+.selected-mark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 24px;
+  color: #FF9800;
+  font-weight: bold;
+}
+
+/* Task 2-2-3: ダメージフロートアップ */
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  60%  { opacity: 1; transform: translate(-50%, -68%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -90%) scale(0.9); }
+}
+
+.animation-damage {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1000;
+  animation: floatUp 0.8s ease-out forwards;
+}
+
+.animation-damage .damage-target {
+  display: block;
+  font-size: 1rem;
+  color: #ff8888;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.animation-damage .damage-amount {
+  display: block;
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #ff3333;
+  text-shadow:
+    0 0 8px rgba(255, 50, 50, 0.7),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Task 2-5-2: visualType対応のダメージ演出 */
+/* 攻撃由来のダメージ（ATTACK） */
+.animation-damage--attack .damage-target {
+  color: #ff6666;
+}
+
+.animation-damage--attack .damage-amount {
+  color: #ff1111;
+  text-shadow:
+    0 0 10px rgba(255, 17, 17, 0.9),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* 支援由来のダメージ（SUPPORT） */
+.animation-damage--support .damage-target {
+  color: #ffaa77;
+}
+
+.animation-damage--support .damage-amount {
+  color: #ff8844;
+  text-shadow:
+    0 0 8px rgba(255, 136, 68, 0.7),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Task 2-2-4: スキル発動演出 */
+@keyframes skillReveal {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  25%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+}
+
+.animation-skill {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(30, 20, 60, 0.96) 0%,
+    rgba(70, 30, 100, 0.96) 100%
+  );
+  border: 2px solid #9f7aea;
+  border-radius: 12px;
+  padding: 1.5rem 3rem;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1000;
+  animation: skillReveal 1.2s ease-in-out forwards;
+  min-width: 240px;
+}
+
+.animation-skill .skill-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #b794f4;
+  letter-spacing: 3px;
+  margin-bottom: 0.5rem;
+}
+
+.animation-skill .skill-name {
+  display: block;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 12px rgba(159, 122, 234, 0.8);
+}
+
+.animation-skill .skill-attacker {
+  display: block;
+  font-size: 0.9rem;
+  color: #c3dafe;
+  margin-top: 0.5rem;
+}
+
+/* Task 2-5-1: SkillVisualType演出実装 */
+.animation-skill-attack {
+  border-color: #ef4444;
+  background: linear-gradient(
+    135deg,
+    rgba(60, 20, 20, 0.96) 0%,
+    rgba(100, 30, 30, 0.96) 100%
+  );
+}
+
+.animation-skill-attack .skill-label {
+  color: #fca5a5;
+}
+
+.animation-skill-attack .skill-name {
+  text-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+}
+
+/* Task 2-2-5: UNIT_DESTROY 死亡演出 */
+@keyframes destroyFade {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  30%  { opacity: 1; transform: translate(-50%, -50%) scale(1.1); filter: brightness(2); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); filter: brightness(0.5); }
+}
+
+.animation-destroy {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1000;
+  animation: destroyFade 1.0s ease-in forwards;
+}
+
+.animation-destroy .destroy-name {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #fc8181;
+}
+
+.animation-destroy .destroy-label {
+  display: block;
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #e53e3e;
+  text-shadow: 0 0 12px rgba(229, 62, 62, 0.8);
+}
+
+/* Task 2-5-2: UNIT_HEAL 回復演出 */
+.animation-heal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1000;
+  animation: floatUp 0.8s ease-out forwards;
+}
+
+.animation-heal .heal-target {
+  display: block;
+  font-size: 1rem;
+  color: #88ff88;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.animation-heal .heal-amount {
+  display: block;
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #33ff77;
+  text-shadow:
+    0 0 8px rgba(51, 255, 119, 0.7),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* 攻撃由来の回復（ATTACK） */
+.animation-heal--attack .heal-target {
+  color: #aaffaa;
+}
+
+.animation-heal--attack .heal-amount {
+  color: #44ff88;
+  text-shadow:
+    0 0 10px rgba(68, 255, 136, 0.9),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* 支援由来の回復（SUPPORT） */
+.animation-heal--support .heal-target {
+  color: #77ddff;
+}
+
+.animation-heal--support .heal-amount {
+  color: #44ccff;
+  text-shadow:
+    0 0 8px rgba(68, 204, 255, 0.7),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* Task 2-5-2: STATE_ADD ステート付与演出（共通ベース） */
+@keyframes stateReveal {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.7) rotate(-5deg); }
+  25%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05) rotate(2deg); }
+  70%  { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+}
+
+/* Task 2-6: STATE_REMOVE ステート削除演出（共通ベース） */
+@keyframes stateRemove {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(5deg); }
+  25%  { opacity: 1; transform: translate(-50%, -50%) scale(0.95) rotate(-3deg); }
+  70%  { opacity: 0.8; transform: translate(-50%, -50%) scale(0.85) rotate(0deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+}
+
+/* ステート演出の共通スタイル */
+.animation-state-add,
+.animation-state-remove {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  background: linear-gradient(
+    135deg,
+    var(--state-neutral-bg-start) 0%,
+    var(--state-neutral-bg-end) 100%
+  );
+  border: 2px solid var(--state-neutral-border);
+  border-radius: 10px;
+  padding: 1.2rem 2.5rem;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1000;
+  min-width: 200px;
+}
+
+.animation-state-add {
+  animation: stateReveal 1.0s ease-in-out forwards;
+}
+
+.animation-state-remove {
+  animation: stateRemove 1.0s ease-in-out forwards;
+}
+
+.animation-state-add .state-label,
+.animation-state-remove .state-label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--state-neutral-label);
+  letter-spacing: 2px;
+  margin-bottom: 0.4rem;
+}
+
+.animation-state-add .state-name,
+.animation-state-remove .state-name {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: var(--state-neutral-name);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.animation-state-add .state-target,
+.animation-state-remove .state-target {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--state-neutral-target);
+  margin-top: 0.4rem;
+}
+
+/* バフ付与/削除（BUFF） */
+.animation-state-add--buff,
+.animation-state-remove--buff {
+  border-color: var(--state-buff-border);
+  background: linear-gradient(
+    135deg,
+    var(--state-buff-bg-start) 0%,
+    var(--state-buff-bg-end) 100%
+  );
+}
+
+.animation-state-add--buff .state-label,
+.animation-state-remove--buff .state-label {
+  color: var(--state-buff-label);
+}
+
+.animation-state-add--buff .state-name,
+.animation-state-remove--buff .state-name {
+  color: var(--state-buff-name);
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+}
+
+/* デバフ付与/削除（DEBUFF） */
+.animation-state-add--debuff,
+.animation-state-remove--debuff {
+  border-color: var(--state-debuff-border);
+  background: linear-gradient(
+    135deg,
+    var(--state-debuff-bg-start) 0%,
+    var(--state-debuff-bg-end) 100%
+  );
+}
+
+.animation-state-add--debuff .state-label,
+.animation-state-remove--debuff .state-label {
+  color: var(--state-debuff-label);
+}
+
+.animation-state-add--debuff .state-name,
+.animation-state-remove--debuff .state-name {
+  color: var(--state-debuff-name);
+  text-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
 }
 
 /* フェーズ表示 */
@@ -411,5 +844,176 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* 国力変動フロートアップアニメーション */
+/* ダメージ: 激しく揺れる */
+@keyframes powerFloatDamage {
+  0%   { 
+    opacity: 0; 
+    transform: translate(-50%, -50%) scale(0.8) rotate(-2deg); 
+  }
+  20%  { 
+    opacity: 1; 
+    transform: translate(-50%, -50%) scale(1.2) rotate(2deg); 
+  }
+  60%  { 
+    opacity: 1; 
+    transform: translate(-50%, -70%) scale(1) rotate(0deg); 
+  }
+  100% { 
+    opacity: 0; 
+    transform: translate(-50%, -95%) scale(0.9); 
+  }
+}
+
+/* ヒール: 滑らかに浮遊 */
+@keyframes powerFloatHeal {
+  0%   { 
+    opacity: 0; 
+    transform: translate(-50%, -50%) scale(0.8); 
+  }
+  20%  { 
+    opacity: 1; 
+    transform: translate(-50%, -50%) scale(1.1); 
+  }
+  60%  { 
+    opacity: 1; 
+    transform: translate(-50%, -70%) scale(1); 
+  }
+  100% { 
+    opacity: 0; 
+    transform: translate(-50%, -95%) scale(0.9); 
+  }
+}
+
+.power-float {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1100;
+}
+
+.power-float.damage {
+  animation: powerFloatDamage 1.0s ease-out forwards;
+}
+
+.power-float.heal {
+  animation: powerFloatHeal 1.0s ease-out forwards;
+}
+
+.power-float.summary {
+  animation: powerFloatHeal 1.0s ease-out forwards;
+}
+
+.power-float.summary .amount {
+  color: #ffaa33;
+  font-size: 2rem;
+  text-shadow:
+    0 0 10px rgba(255, 170, 51, 0.8),
+    2px 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.power-float .nation-name {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+  opacity: 0.9;
+}
+
+.power-float .amount {
+  display: block;
+  font-size: 3.5rem;
+  font-weight: 900;
+}
+
+.power-float.damage .amount {
+  color: var(--power-damage-color);
+  text-shadow:
+    0 0 10px rgba(255, 102, 51, 0.8),
+    2px 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.power-float.heal .amount {
+  color: var(--power-heal-color);
+  text-shadow:
+    0 0 10px rgba(51, 255, 119, 0.8),
+    2px 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .power-float .amount {
+    font-size: 2.5rem; /* 3.5rem → 2.5rem */
+  }
+  
+  .power-gauge {
+    height: 10px; /* 12px → 10px */
+  }
+}
+
+/* ================ フェーズ遷移演出 ================ */
+
+/* フェーズ遷移アニメーション定義 */
+@keyframes phaseTransit {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  20% {  /* 300ms / 1500ms = 20% */
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {  /* 1200ms / 1500ms = 80% */
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+}
+
+/* フェーズ遷移オーバーレイ */
+.phase-transit-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  padding: 3rem 4rem;
+  border-radius: 12px;
+  border: 2px solid rgba(176, 190, 197, 0.3);
+  text-align: center;
+  pointer-events: none;
+  z-index: 1000;
+  animation: phaseTransit 1.5s ease-in-out forwards;
+  min-width: 320px;
+}
+
+/* フェーズ名 */
+.phase-transit-overlay .phase-name {
+  display: block;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .phase-transit-overlay {
+    padding: 2rem 3rem;
+    min-width: 260px;
+  }
+  
+  .phase-transit-overlay .phase-name {
+    font-size: 1.8rem;
   }
 }

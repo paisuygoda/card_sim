@@ -245,7 +245,7 @@ export class GameManager {
 
     // 内政コマンドを繰り返し実行
     while (true) {
-      // 1. コマンド入力待ち
+      // 1. コマンド入力待ち（UI側で完全なコマンドが組み立てられる）
       const availableCommands = [...nation.domesticCommands, ...nation.actionCommands];
       const selectedCommand = await this.bridge.waitPlayerInput(
         InputRequest.SELECT_COMMAND,
@@ -254,7 +254,7 @@ export class GameManager {
           nation,
           gameState: this.gameState,
         }
-      );
+      ) as Command;
 
       // 2. コマンドタイプを確認
       if (selectedCommand.commandType !== 'DOMESTIC') {
@@ -330,6 +330,8 @@ export class GameManager {
    * @param command 実行するコマンド
    */
   private async actionPhase(command: Command): Promise<void> {
+    this.gameState.currentPhase = GamePhase.ACTION;
+    
     // 1. コマンド効果実行
     await this.executeCommand(command);
 
@@ -414,6 +416,7 @@ export class GameManager {
       currentTarget: null,
       stateQueue: [],
       effectQueue: [],
+      battleContext: null,
     };
   }
 

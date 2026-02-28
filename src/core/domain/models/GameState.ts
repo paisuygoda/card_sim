@@ -1,3 +1,4 @@
+import { BattleContext } from './BattleContext';
 import { Command } from './Command';
 import { Effect } from './Effect';
 import { GamePhase } from './GamePhase';
@@ -35,4 +36,7 @@ export interface GameState {
   stateQueue: State[];
   /** 効果処理キュー */
   effectQueue: Effect[];
+
+  /** 戦闘コンテキスト（戦闘フェーズ中のみ設定、それ以外はnull） */
+  battleContext: BattleContext | null;
 }

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { GameBoard } from '../GameBoard';
 import { GamePhase } from '@core/domain/models';
-import type { GameState, Nation } from '@core/domain/models';
+import type { GameState, Nation, Unit } from '@core/domain/models';
 
 /**
  * GameBoard コンポーネント テスト
@@ -76,7 +76,35 @@ const mockGameState: GameState = {
   currentTarget: null,
   stateQueue: [],
   effectQueue: [],
+  battleContext: null,
 };
+
+// -----------------------------------------------------------------------
+// テストヘルパー: 墓地ユニット生成
+// -----------------------------------------------------------------------
+
+const createGraveyardUnit = (index: number, ownerNationId: string = 'nation1'): Unit => ({
+  baseUnitId: `graveyardUnit${index}`,
+  unitId: `${ownerNationId}-graveyardUnit${index}`,
+  ownerNationId,
+  name: `墓地ユニット${index}`,
+  maxHP: 100,
+  currentHP: 0,
+  attack: 30,
+  skillId: 'normalAttack',
+  states: [],
+});
+
+const createGraveyardUnits = (count: number, ownerNationId: string = 'nation1'): Unit[] =>
+  Array.from({ length: count }, (_, i) => createGraveyardUnit(i + 1, ownerNationId));
+
+const createNationWithGraveyard = (
+  baseNation: Nation,
+  graveyardCount: number
+): Nation => ({
+  ...baseNation,
+  graveyard: createGraveyardUnits(graveyardCount, baseNation.nationId),
+});
 
 // -----------------------------------------------------------------------
 // テストスイート
@@ -164,6 +192,184 @@ describe('GameBoard', () => {
       const { container } = render(<GameBoard />);
       const panels = container.querySelectorAll('.nation-panel');
       expect(panels).toHaveLength(0);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // TC-GB-GY: Graveyard統合
+  // タスク3-6-2: GameBoardへのGraveyard統合
+  // -----------------------------------------------------------------------
+  describe('TC-GB-GY: Graveyard統合', () => {
+    // --------------------------------------------------------------------
+    // TC-GB-GY-1: Graveyardコンポーネントの存在確認
+    // --------------------------------------------------------------------
+    describe('TC-GB-GY-1: Graveyardコンポーネントの存在確認', () => {
+      it('TC-GB-GY-1-1: 単一国家でGraveyardが表示される', () => {
+        // 2体の墓地ユニットで検証
+        const nationWithGraveyard = createNationWithGraveyard(mockNation1, 2);
+        const stateWithGraveyard: GameState = {
+          ...mockGameState,
+          nations: [nationWithGraveyard],
+        };
+
+        mockedStore.mockImplementation((selector: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+          selector({ gameState: stateWithGraveyard })
+        );
+
+        const { container } = render(<GameBoard />);
+        const graveyards = container.querySelectorAll('.graveyard');
+        expect(graveyards).toHaveLength(1);
+      });
+
+      it('TC-GB-GY-1-2: 複数国家でそれぞれGraveyardが表示される', () => {
+        // 2国家に異なる数の墓地ユニット（1体と2体）で検証
+        const nation1WithGraveyard = createNationWithGraveyard(mockNation1, 1);
+        const nation2WithGraveyard = createNationWithGraveyard(mockNation2, 2);
+        const stateWithMultipleGraveyards: GameState = {
+          ...mockGameState,
+          nations: [nation1WithGraveyard, nation2WithGraveyard],
+        };
+
+        mockedStore.mockImplementation((selector: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+          selector({ gameState: stateWithMultipleGraveyards })
+        );
+
+        const { container } = render(<GameBoard />);
+        const graveyards = container.querySelectorAll('.graveyard');
+        expect(graveyards).toHaveLength(2);
+      });
+
+      it('TC-GB-GY-1-3: 墓地が空でもGraveyardが表示される', () => {
+        // 空の墓地で検証
+        const nationWithEmptyGraveyard = createNationWithGraveyard(mockNation1, 0);
+        const stateWithEmptyGraveyard: GameState = {
+          ...mockGameState,
+          nations: [nationWithEmptyGraveyard],
+        };
+
+        mockedStore.mockImplementation((selector: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+          selector({ gameState: stateWithEmptyGraveyard })
+        );
+
+        render(<GameBoard />);
+        const graveyardContainer = screen.getByTestId('graveyard-container');
+        expect(graveyardContainer).toBeInTheDocument();
+        expect(screen.getByTestId('graveyard-empty-message')).toBeInTheDocument();
+      });
+    });
+
+    // --------------------------------------------------------------------
+    // TC-GB-GY-2: Props渡しの検証
+    // --------------------------------------------------------------------
+    describe('TC-GB-GY-2: Props渡しの検証', () => {
+      it('TC-GB-GY-2-1: 国家名が正しく渡される', () => {
+        // カスタム国家名で検証
+        const testNation: Nation = {
+          ...mockNation1,
+          name: 'テスト王国',
+          graveyard: [],
+        };
+        const stateWithTestNation: GameState = {
+          ...mockGameState,
+          nations: [testNation],
+        };
+
+        mockedStore.mockImplementation((selector: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+          selector({ gameState: stateWithTestNation })
+        );
+
+        render(<GameBoard />);
+        const title = screen.getByTestId('graveyard-title');
+        expect(title).toHaveTextContent('テスト王国の墓地');
+      });
+
+      it('TC-GB-GY-2-2: 墓地ユニット数が正しく表示される', () => {
+        // 3体の墓地ユニットで検証
+        const nationWith3Graveyard = createNationWithGraveyard(mockNation1, 3);
+        const stateWith3Graveyard: GameState = {
+          ...mockGameState,
+          nations: [nationWith3Graveyard],
+        };
+
+        mockedStore.mockImplementation((selector: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+          selector({ gameState: stateWith3Graveyard })
+        );
+
+        render(<GameBoard />);
+        const count = screen.getByTestId('graveyard-count');
+        expect(count).toHaveTextContent('(3)');
+      });
+
+      it('TC-GB-GY-2-3: 複数国家で異なる墓地内容が表示される', () => {
+        // 2国家に異なる墓地数（1体と2体）で検証
+        const nation1WithGraveyard = createNationWithGraveyard(mockNation1, 1);
+        const nation2WithGraveyard = createNationWithGraveyard(mockNation2, 2);
+        const stateWithDifferentGraveyards: GameState = {
+          ...mockGameState,
+          nations: [nation1WithGraveyard, nation2WithGraveyard],
+        };
+
+        mockedStore.mockImplementation((selector: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+          selector({ gameState: stateWithDifferentGraveyards })
+        );
+
+        render(<GameBoard />);
+        const titles = screen.getAllByTestId('graveyard-title');
+        expect(titles).toHaveLength(2);
+        expect(titles[0]).toHaveTextContent('帝国の墓地');
+        expect(titles[1]).toHaveTextContent('連邦の墓地');
+
+        const counts = screen.getAllByTestId('graveyard-count');
+        expect(counts).toHaveLength(2);
+        expect(counts[0]).toHaveTextContent('(1)');
+        expect(counts[1]).toHaveTextContent('(2)');
+      });
+    });
+
+    // --------------------------------------------------------------------
+    // TC-GB-GY-3: 配置位置の検証
+    // --------------------------------------------------------------------
+    describe('TC-GB-GY-3: 配置位置の検証', () => {
+      it('TC-GB-GY-3-1: nation-section内に配置される', () => {
+        // nation-section内の配置を検証
+        const nationWithGraveyard = createNationWithGraveyard(mockNation1, 0);
+        const stateWithGraveyard: GameState = {
+          ...mockGameState,
+          nations: [nationWithGraveyard],
+        };
+
+        mockedStore.mockImplementation((selector: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+          selector({ gameState: stateWithGraveyard })
+        );
+
+        const { container } = render(<GameBoard />);
+        const nationSection = container.querySelector('.nation-section');
+        expect(nationSection).not.toBeNull();
+
+        const graveyardInSection = nationSection?.querySelector('.graveyard');
+        expect(graveyardInSection).not.toBeNull();
+      });
+
+      it('TC-GB-GY-3-2: BattleAreaの後に配置される', () => {
+        // BattleAreaの直後の配置を検証
+        const nationWithGraveyard = createNationWithGraveyard(mockNation1, 0);
+        const stateWithGraveyard: GameState = {
+          ...mockGameState,
+          nations: [nationWithGraveyard],
+        };
+
+        mockedStore.mockImplementation((selector: any) => // eslint-disable-line @typescript-eslint/no-explicit-any
+          selector({ gameState: stateWithGraveyard })
+        );
+
+        const { container } = render(<GameBoard />);
+        const battleArea = container.querySelector('.battle-area');
+        expect(battleArea).not.toBeNull();
+
+        const nextSibling = battleArea?.nextElementSibling;
+        expect(nextSibling).not.toBeNull();
+        expect(nextSibling?.classList.contains('graveyard')).toBe(true);
+      });
     });
   });
 });

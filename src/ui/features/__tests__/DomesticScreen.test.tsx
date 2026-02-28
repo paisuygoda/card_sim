@@ -30,8 +30,21 @@ vi.mock('@ui/components/CommandPanel', () => ({
 
 // BattleAreaのモック
 vi.mock('@ui/components/BattleArea', () => ({
-  BattleArea: ({ nation }: any) => (
-    <div data-testid="battle-area">{nation.name}</div>
+  BattleArea: ({ nation, onUnitClick }: any) => (
+    <div data-testid="battle-area">
+      <div data-testid="nation-name">{nation.name}</div>
+      {nation.units.map((unit: any, index: number) => (
+        unit && (
+          <button
+            key={index}
+            data-testid={`unit-${index}`}
+            onClick={() => onUnitClick?.(index)}
+          >
+            {unit.name} (ID: {unit.unitId})
+          </button>
+        )
+      ))}
+    </div>
   ),
 }));
 
@@ -114,6 +127,7 @@ describe('DomesticScreen - 入力完了処理', () => {
     currentTarget: null,
     stateQueue: [],
     effectQueue: [],
+    battleContext: null,
   });
 
   const createInputState = () => ({
@@ -484,6 +498,507 @@ describe('DomesticScreen - 入力完了処理', () => {
       // 修正後: input.context.commands を渡す → battleCommand が含まれる → 成功（Green）
       expect(screen.getByTestId('command-cmd_battle')).toBeInTheDocument();
       expect(screen.getByText('戦闘')).toBeInTheDocument();
+    });
+  });
+});
+
+describe('DomesticScreen - ユニット選択モード', () => {
+  const mockUnit1: any = {
+    unitId: 'unit-001',
+    name: 'テスト戦士',
+    maxHP: 100,
+    currentHP: 100,
+    attack: 10,
+    defense: 5,
+    position: 0,
+    states: [],
+    skills: [],
+  };
+
+  const mockUnit2: any = {
+    unitId: 'unit-002',
+    name: 'テスト魔法使い',
+    maxHP: 80,
+    currentHP: 80,
+    attack: 15,
+    defense: 3,
+    position: 1,
+    states: [],
+    skills: [],
+  };
+
+  const mockSelfUnitCommand: Command = {
+    commandId: 'cmd_buff_unit',
+    commandType: CommandType.DOMESTIC,
+    name: '味方強化',
+    commandVisualType: CommandVisualType.DOMESTIC,
+    costAction: 1,
+    costPower: 10,
+    unitSpace: 0,
+    targetType: CommandTargetType.SELF_UNIT,
+    effects: [],
+  };
+
+  const mockEnemyUnitCommand: Command = {
+    commandId: 'cmd_debuff_enemy',
+    commandType: CommandType.DOMESTIC,
+    name: '敵弱体化',
+    commandVisualType: CommandVisualType.DOMESTIC,
+    costAction: 1,
+    costPower: 15,
+    unitSpace: 0,
+    targetType: CommandTargetType.ENEMY_UNIT,
+    effects: [],
+  };
+
+  const mockEnemyNationCommand: Command = {
+    commandId: 'cmd_attack_nation',
+    commandType: CommandType.BATTLE,
+    name: '国家攻撃',
+    commandVisualType: CommandVisualType.BATTLE,
+    costAction: 1,
+    costPower: 0,
+    unitSpace: 0,
+    targetType: CommandTargetType.ENEMY_NATION,
+    effects: [],
+  };
+
+  const mockSelfNationCommand: Command = {
+    commandId: 'cmd_train',
+    commandType: CommandType.DOMESTIC,
+    name: '訓練',
+    commandVisualType: CommandVisualType.DOMESTIC,
+    costAction: 1,
+    costPower: 10,
+    unitSpace: 0,
+    targetType: CommandTargetType.SELF_NATION,
+    effects: [],
+  };
+
+  const createGameStateWithUnits = (isNPC: boolean = false): GameState => ({
+    stageId: 1,
+    commandNum: 3,
+    currentRound: 1,
+    roundLimit: 10,
+    nations: [
+      {
+        nationId: 'player',
+        name: 'プレイヤー国家',
+        isNPC: false,
+        power: 100,
+        remainingActions: 3,
+        states: [],
+        units: [mockUnit1, mockUnit2, null, null, null, null, null, null],
+        graveyard: [],
+        domesticCommands: [mockSelfUnitCommand, mockSelfNationCommand],
+        actionCommands: [mockEnemyUnitCommand],
+        targetMilitaryRatio: 0.3,
+        aggressiveness: 0.5,
+        hostileNationIds: [],
+      },
+      {
+        nationId: 'enemy',
+        name: '敵国家',
+        isNPC: true,
+        power: 80,
+        remainingActions: 3,
+        states: [],
+        units: [mockUnit1, null, null, null, null, null, null, null],
+        graveyard: [],
+        domesticCommands: [],
+        actionCommands: [],
+        targetMilitaryRatio: 0.4,
+        aggressiveness: 0.7,
+        hostileNationIds: ['player'],
+      },
+    ],
+    currentTurnPlayer: isNPC ? 1 : 0,
+    currentPhase: GamePhase.DOMESTIC,
+    currentTarget: null,
+    stateQueue: [],
+    effectQueue: [],
+    battleContext: null,
+  });
+
+  const createInputState = () => ({
+    requestType: InputRequest.SELECT_COMMAND,
+    context: { nationId: 'player' },
+    isWaiting: true,
+  });
+
+  beforeEach(() => {
+    useGameStateStore.setState({ gameState: null });
+    useUIStateStore.setState({ 
+      input: null,
+      animationQueue: [],
+      currentAnimation: null,
+      logs: [],
+    });
+    vi.clearAllMocks();
+  });
+
+  describe('正常系: SELF_UNITコマンド', () => {
+    it('TC1-1-001: SELF_UNITコマンド選択時、自国のユニット選択UIが表示される', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const gameState = createGameStateWithUnits(false);
+      const inputState = createInputState();
+      
+      useGameStateStore.setState({ gameState });
+      useUIStateStore.setState({ input: inputState });
+
+      // Act
+      render(<DomesticScreen />);
+      const buffButton = screen.getByTestId('command-cmd_buff_unit');
+      await user.click(buffButton);
+
+      // Assert
+      // ユニット選択UIが表示される
+      expect(screen.queryByTestId('command-panel')).not.toBeInTheDocument();
+      expect(screen.getByText('自国のユニットを選択してください')).toBeInTheDocument();
+      expect(screen.getByTestId('battle-area')).toBeInTheDocument();
+      expect(screen.getByText('キャンセル')).toBeInTheDocument();
+    });
+
+    it('TC1-1-003: ユニットをクリックすると選択される', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const gameState = createGameStateWithUnits(false);
+      const inputState = createInputState();
+      
+      useGameStateStore.setState({ gameState });
+      useUIStateStore.setState({ input: inputState });
+
+      const completeInputMock = vi.fn();
+      useUIStateStore.setState({ 
+        completeInput: completeInputMock,
+        input: inputState,
+      });
+
+      // Act
+      render(<DomesticScreen />);
+      const buffButton = screen.getByTestId('command-cmd_buff_unit');
+      await user.click(buffButton);
+
+      // ユニット選択（モックBattleAreaでunitボタンをクリック）
+      const unit0Button = screen.getByTestId('unit-0');
+      await user.click(unit0Button);
+
+      // Assert
+      await waitFor(() => {
+        expect(completeInputMock).toHaveBeenCalled();
+      });
+      
+      const calledCommand = completeInputMock.mock.calls[0][0];
+      expect(calledCommand.targetId).toBe('unit-001');
+    });
+
+    it('TC1-1-004: 選択後、完全なコマンドがcompleteInput()に渡される', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const gameState = createGameStateWithUnits(false);
+      const inputState = createInputState();
+      
+      useGameStateStore.setState({ gameState });
+      useUIStateStore.setState({ input: inputState });
+
+      const completeInputMock = vi.fn();
+      useUIStateStore.setState({ 
+        completeInput: completeInputMock,
+        input: inputState,
+      });
+
+      // Act
+      render(<DomesticScreen />);
+      const buffButton = screen.getByTestId('command-cmd_buff_unit');
+      await user.click(buffButton);
+
+      const unit1Button = screen.getByTestId('unit-1');
+      await user.click(unit1Button);
+
+      // Assert
+      await waitFor(() => {
+        expect(completeInputMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            commandId: 'cmd_buff_unit',
+            targetType: CommandTargetType.SELF_UNIT,
+            targetId: 'unit-002',
+          })
+        );
+      });
+    });
+  });
+
+  describe('正常系: ENEMY_UNITコマンド', () => {
+    it('TC1-1-002: ENEMY_UNITコマンド選択時、2段階UI（敵国選択→ユニット選択）が表示される', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const gameState = createGameStateWithUnits(false);
+      const inputState = {
+        requestType: InputRequest.SELECT_COMMAND,
+        context: { 
+          nationId: 'player',
+          commands: [...gameState.nations[0].domesticCommands, ...gameState.nations[0].actionCommands]
+        },
+        isWaiting: true,
+      };
+      
+      useGameStateStore.setState({ gameState });
+      useUIStateStore.setState({ input: inputState });
+
+      // Act - Step 1: コマンドを選択
+      render(<DomesticScreen />);
+      const debuffButton = screen.getByTestId('command-cmd_debuff_enemy');
+      await user.click(debuffButton);
+
+      // Assert - Step 1: 敵国選択UIが表示される
+      expect(screen.queryByTestId('command-panel')).not.toBeInTheDocument();
+      expect(screen.getByText('攻撃対象を選択してください')).toBeInTheDocument();
+      expect(screen.getByText('敵国家')).toBeInTheDocument();
+      expect(screen.getByText('キャンセル')).toBeInTheDocument();
+
+      // Act - Step 2: 敵国を選択
+      const enemyButton = screen.getByText('敵国家');
+      await user.click(enemyButton);
+
+      // Assert - Step 2: ユニット選択UIが表示される
+      expect(screen.getByText('敵国家のユニットを選択してください')).toBeInTheDocument();
+      expect(screen.getByTestId('battle-area')).toBeInTheDocument();
+      expect(screen.getByText('キャンセル')).toBeInTheDocument();
+      
+      // 敵国の国家名が表示されている
+      expect(screen.getByTestId('nation-name')).toHaveTextContent('敵国家');
+    });
+  });
+
+  describe('正常系: キャンセル機能', () => {
+    it('TC1-1-005: キャンセル機能が動作する', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const gameState = createGameStateWithUnits(false);
+      const inputState = createInputState();
+      
+      useGameStateStore.setState({ gameState });
+      useUIStateStore.setState({ input: inputState });
+
+      const completeInputMock = vi.fn();
+      useUIStateStore.setState({ 
+        completeInput: completeInputMock,
+        input: inputState,
+      });
+
+      // Act
+      render(<DomesticScreen />);
+      const buffButton = screen.getByTestId('command-cmd_buff_unit');
+      await user.click(buffButton);
+
+      // ユニット選択UIが表示されている
+      expect(screen.getByText('自国のユニットを選択してください')).toBeInTheDocument();
+
+      // キャンセルボタンをクリック
+      const cancelButton = screen.getByText('キャンセル');
+      await user.click(cancelButton);
+
+      // Assert
+      // CommandPanelが再度表示される
+      expect(screen.getByTestId('command-panel')).toBeInTheDocument();
+      // ユニット選択UIが非表示になる
+      expect(screen.queryByText('自国のユニットを選択してください')).not.toBeInTheDocument();
+      // completeInputは呼ばれない
+      expect(completeInputMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('回帰テスト', () => {
+    it('TC1-1-101: 既存の国家選択機能は引き続き動作する', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const gameState = createGameStateWithUnits(false);
+      gameState.nations[0].actionCommands = [mockEnemyNationCommand];
+      const inputState = {
+        requestType: InputRequest.SELECT_COMMAND,
+        context: {
+          nationId: 'player',
+          commands: [...gameState.nations[0].domesticCommands, ...gameState.nations[0].actionCommands],
+        },
+        isWaiting: true,
+      };
+      
+      useGameStateStore.setState({ gameState });
+      useUIStateStore.setState({ input: inputState });
+
+      const completeInputMock = vi.fn();
+      useUIStateStore.setState({ 
+        completeInput: completeInputMock,
+        input: inputState,
+      });
+
+      // Act
+      render(<DomesticScreen />);
+      const attackButton = screen.getByTestId('command-cmd_attack_nation');
+      await user.click(attackButton);
+
+      // Assert: 国家選択UIが表示される
+      expect(screen.getByText('攻撃対象を選択してください')).toBeInTheDocument();
+      
+      // 敵国を選択
+      const enemyButton = screen.getByText('敵国家');
+      await user.click(enemyButton);
+
+      // completeInputが呼ばれる
+      await waitFor(() => {
+        expect(completeInputMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            commandId: 'cmd_attack_nation',
+            targetId: 'enemy',
+          })
+        );
+      });
+    });
+
+    it('TC1-1-102: SELF_NATIONコマンドは直接実行される', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const gameState = createGameStateWithUnits(false);
+      const inputState = createInputState();
+      
+      useGameStateStore.setState({ gameState });
+      useUIStateStore.setState({ input: inputState });
+
+      const completeInputMock = vi.fn();
+      useUIStateStore.setState({ 
+        completeInput: completeInputMock,
+        input: inputState,
+      });
+
+      // Act
+      render(<DomesticScreen />);
+      const trainButton = screen.getByTestId('command-cmd_train');
+      await user.click(trainButton);
+
+      // Assert
+      // ターゲット選択UIが表示されない
+      expect(screen.queryByText('自国のユニットを選択してください')).not.toBeInTheDocument();
+      expect(screen.queryByText('攻撃対象を選択してください')).not.toBeInTheDocument();
+      
+      // 即座にcompleteInputが呼ばれる
+      await waitFor(() => {
+        expect(completeInputMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            commandId: 'cmd_train',
+            targetType: CommandTargetType.SELF_NATION,
+          })
+        );
+      });
+    });
+  });
+
+  describe('エッジケース', () => {
+    it.skip('TC1-1-201: 生存ユニットが存在しない場合のハンドリング', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const gameState = createGameStateWithUnits(false);
+      // すべてのユニットをnullに設定
+      gameState.nations[0].units = [null, null, null, null, null, null, null, null];
+      const inputState = createInputState();
+      
+      useGameStateStore.setState({ gameState });
+      useUIStateStore.setState({ input: inputState });
+
+      const completeInputMock = vi.fn();
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      useUIStateStore.setState({ 
+        completeInput: completeInputMock,
+        input: inputState,
+      });
+
+      // Act
+      render(<DomesticScreen />);
+      const buffButton = screen.getByTestId('command-cmd_buff_unit');
+      await user.click(buffButton);
+
+      // ユニット[0]（null）を選択（BattleAreaはnullユニットのボタンを作らないが、仮に作られたとして）
+      // 実際にはBattleAreaモックがnullユニットのボタンを作らないため、このテストは実装依存
+
+      // Assert
+      // エラーログが出力される
+      // completeInputは呼ばれない
+      // isSelectingがリセットされる
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it.skip('TC1-1-202: 複数回ユニットを選択した場合（最初の1回のみ有効）', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const gameState = createGameStateWithUnits(false);
+      const inputState = createInputState();
+      
+      useGameStateStore.setState({ gameState });
+      useUIStateStore.setState({ input: inputState });
+
+      const completeInputMock = vi.fn();
+      useUIStateStore.setState({ 
+        completeInput: completeInputMock,
+        input: inputState,
+      });
+
+      // Act
+      render(<DomesticScreen />);
+      const buffButton = screen.getByTestId('command-cmd_buff_unit');
+      await user.click(buffButton);
+
+      const unit0Button = screen.getByTestId('unit-0');
+      const unit1Button = screen.getByTestId('unit-1');
+      
+      // 2回連続でクリック
+      await user.click(unit0Button);
+      await user.click(unit1Button);
+
+      // Assert
+      // 最初の1回のみが有効
+      await waitFor(() => {
+        expect(completeInputMock).toHaveBeenCalledTimes(1);
+      });
+      
+      const calledCommand = completeInputMock.mock.calls[0][0];
+      expect(calledCommand.targetId).toBe('unit-001'); // 最初のユニット
+    });
+
+    it.skip('TC1-1-204: completeInputが例外を投げた場合のエラーハンドリング', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const gameState = createGameStateWithUnits(false);
+      const inputState = createInputState();
+      
+      useGameStateStore.setState({ gameState });
+      useUIStateStore.setState({ input: inputState });
+
+      const completeInputMock = vi.fn(() => {
+        throw new Error('Input resolution failed');
+      });
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      useUIStateStore.setState({ 
+        completeInput: completeInputMock,
+        input: inputState,
+      });
+
+      // Act
+      render(<DomesticScreen />);
+      const buffButton = screen.getByTestId('command-cmd_buff_unit');
+      await user.click(buffButton);
+
+      const unit0Button = screen.getByTestId('unit-0');
+      await user.click(unit0Button);
+
+      // Assert
+      // エラーログが出力される
+      expect(consoleErrorSpy).toHaveBeenCalled();
+      // アプリケーションがクラッシュしない
+
+      consoleErrorSpy.mockRestore();
     });
   });
 });

@@ -33,6 +33,7 @@ const initialGameState: GameState = {
   currentTarget: null,
   stateQueue: [],
   effectQueue: [],
+  battleContext: null,
 };
 
 export const useGameStateStore = create<GameStateStore>((set) => ({

@@ -1,4 +1,4 @@
-import { Command, Nation } from '../domain/models';
+import { Command, Nation, GamePhase, SkillVisualType } from '../domain/models';
 /**
  * IGameUIBridge - UI連携インターフェース
  * 
@@ -66,7 +66,7 @@ export enum InputRequest {
 
 /** フェーズ遷移イベントデータ */
 export type PhaseTransitData = {
-  phase: string;
+  phase: GamePhase | 'EARLY_VICTORY';
 };
 
 /** ユニットダメージ・回復イベントデータ */
@@ -97,6 +97,7 @@ export type SkillActivateData = {
   skillId: string;
   skillName: string;
   targets: (string | null)[];
+  skillVisualType?: SkillVisualType;
 };
 
 /** コマンド実行イベントデータ */
@@ -176,7 +177,7 @@ export interface IGameUIBridge {
    * 
    * @param requestType 入力要求種類
    * @param context 入力に必要なコンテキスト（選択可能なコマンドリストなど）
-   * @returns 選択されたコマンド
+   * @returns 入力結果（Command等）
    */
   waitPlayerInput(requestType: InputRequest, context: any): Promise<Command>;
 

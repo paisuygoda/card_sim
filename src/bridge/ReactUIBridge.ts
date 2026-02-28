@@ -69,8 +69,12 @@ export class ReactUIBridge implements IGameUIBridge {
    * @param gameState 現在のゲーム状態
    */
   updateGameState(gameState: GameState): void {
-    // Zustandストアのゲーム状態を更新
-    useGameStateStore.getState().setGameState(gameState);
+    // 深いコピーを生成してZustandに渡す
+    // GameManagerやBattleLogicはgameStateをin-placeで変異させるため、
+    // nations[i].units[j].currentHP などのネストされた変更はシャローコピーでは検知されない。
+    // React.memoはpropsの参照比較（Object.is）を使うため、
+    // structuredCloneで全ネストオブジェクトに新しい参照を付与して再レンダリングを確実にする。
+    useGameStateStore.getState().setGameState(structuredClone(gameState));
   }
 
   /**

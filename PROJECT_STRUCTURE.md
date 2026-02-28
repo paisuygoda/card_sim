@@ -9,11 +9,11 @@
 
 ```
 src/
-├── core/                     # ゲームエンジン（React非依存）
-│   ├── domain/               # ドメインロジック
-│   │   ├── models/           # 型定義・エンティティ
+├── core/                         # ゲームエンジン（React非依存）
+│   ├── domain/
+│   │   ├── models/               # 型定義・エンティティ
 │   │   │   ├── BattleContext.ts
-│   │   │   ├── Command.ts
+│   │   │   ├── Command.ts        # Command, CommandType, CommandVisualType, CommandTargetType
 │   │   │   ├── Effect.ts
 │   │   │   ├── GamePhase.ts
 │   │   │   ├── GameState.ts
@@ -24,56 +24,85 @@ src/
 │   │   │   ├── TargetPattern.ts
 │   │   │   ├── Unit.ts
 │   │   │   └── index.ts
-│   │   └── logic/            # 純粋関数ロジック
-│   │       ├── BattleLogic.ts      # 戦闘処理
-│   │       ├── EffectExecutor.ts   # 効果実行
-│   │       ├── GameMath.ts         # 数値計算
-│   │       ├── NPCLogic.ts         # NPC思考
-│   │       ├── PriorityManager.ts  # 優先順位管理
-│   │       ├── StateManager.ts     # ステート管理
-│   │       ├── UnitManager.ts      # ユニット管理
-│   │       └── index.ts
-│   ├── application/          # アプリケーション層
-│   │   ├── GameManager.ts    # ゲーム進行制御（async/await）
+│   │   ├── logic/                # 純粋関数ロジック
+│   │   │   ├── BattleLogic.ts        # 戦闘処理
+│   │   │   ├── EffectExecutor.ts     # 効果実行ディスパッチャー
+│   │   │   ├── GameMath.ts           # 数値計算（切り上げ・上下限）
+│   │   │   ├── NationManager.ts      # 国家管理
+│   │   │   ├── NPCLogic.ts           # NPC思考
+│   │   │   ├── PriorityManager.ts    # 優先順位管理
+│   │   │   ├── StateExecutor.ts      # ステート処理
+│   │   │   ├── UnitManager.ts        # ユニット管理
+│   │   │   ├── index.ts
+│   │   │   └── effects/             # 効果種別ごとの実装
+│   │   │       ├── actionEffects.ts
+│   │   │       ├── commandEffects.ts
+│   │   │       ├── powerEffects.ts
+│   │   │       ├── stateEffects.ts
+│   │   │       ├── unitAttackEffects.ts
+│   │   │       ├── unitHPEffects.ts
+│   │   │       ├── unitSummonEffects.ts
+│   │   │       └── index.ts
+│   │   └── master/               # マスターデータ定義
+│   │       ├── CommandMaster.ts
+│   │       ├── EffectMaster.ts
+│   │       ├── NationMaster.ts
+│   │       ├── SkillMaster.ts
+│   │       ├── StageMaster.ts
+│   │       ├── StateMaster.ts
+│   │       ├── UnitMaster.ts
+│   │       └── index.ts          # MasterData オブジェクト、getStateIcon/getStateCategory等
+│   ├── application/
+│   │   ├── GameManager.ts        # ゲーム進行制御（async/await）
 │   │   └── index.ts
-│   └── infrastructure/       # インフラストラクチャ層
-│       ├── IGameUIBridge.ts  # UI連携インターフェース
+│   └── infrastructure/
+│       ├── IGameUIBridge.ts      # Bridge インターフェース、GameEvent enum、InputRequest enum、各データ型
 │       └── index.ts
 │
-├── bridge/                   # UI連携実装
-│   ├── ReactUIBridge.ts      # 本番用実装（Zustand連携）
+├── bridge/
+│   ├── ReactUIBridge.ts          # IGameUIBridge 本番実装（Zustand連携）
 │   └── index.ts
 │
-├── store/                    # 状態管理（Zustand）
-│   ├── useGameStateStore.ts  # ゲーム状態
-│   ├── useUIStateStore.ts    # UI状態（アニメーション、入力待ちなど）
+├── store/                        # 状態管理（Zustand）
+│   ├── useGameStateStore.ts      # ゲーム状態（GameState）
+│   ├── useUIStateStore.ts        # UI状態（animationQueue, currentAnimation, input, logs）
 │   └── index.ts
 │
-├── ui/                       # React UIコンポーネント
-│   ├── components/           # 共通コンポーネント
-│   │   ├── AnimationDisplay.tsx  # アニメーション表示
-│   │   ├── BattleArea.tsx        # 戦闘エリア
-│   │   ├── CommandPanel.tsx      # コマンドパネル
-│   │   ├── GameBoard.tsx         # ゲームボード
-│   │   ├── NationPanel.tsx       # 国家パネル
-│   │   ├── PhaseDisplay.tsx      # フェーズ表示
-│   │   ├── UnitCard.tsx          # ユニットカード
+├── ui/                           # React UIコンポーネント
+│   ├── components/               # 共通コンポーネント
+│   │   ├── AnimationDisplay.tsx      # アニメーション表示（イベント種別ごとの演出描画）
+│   │   ├── BattleArea.tsx            # 戦闘エリア（前衛・中衛・後衛・ベンチ配置）
+│   │   ├── CommandPanel.tsx          # コマンド選択パネル
+│   │   ├── GameBoard.tsx             # ゲームボード全体レイアウト
+│   │   ├── Graveyard.tsx / .css      # 墓地表示
+│   │   ├── NationPanel.tsx           # 国家情報パネル（国力ゲージ付き）
+│   │   ├── PhaseDisplay.tsx          # フェーズ表示
+│   │   ├── StateIcon.tsx / .css      # ステートアイコン
+│   │   ├── StateIconList.tsx / .css  # ステートアイコンリスト
+│   │   ├── StateTooltip.tsx / .css   # ステートツールチップ
+│   │   ├── UnitCard.tsx              # ユニットカード（HPバー付き）
 │   │   └── index.ts
-│   ├── features/             # 画面単位コンポーネント
-│   │   ├── BattleScreen.tsx      # 戦闘画面
-│   │   ├── DomesticScreen.tsx    # 内政画面
-│   │   ├── GameEndScreen.tsx     # ゲーム終了画面
+│   ├── features/                 # 画面単位コンポーネント
+│   │   ├── ActionScreen.tsx          # 行動フェーズ画面
+│   │   ├── BattleScreen.tsx          # 戦闘画面
+│   │   ├── DomesticScreen.tsx        # 内政画面（コマンド→ターゲット選択の多段階UI）
+│   │   ├── GameEndScreen.tsx         # ゲーム終了画面
+│   │   ├── StageSelectScreen.tsx     # ステージ選択画面
 │   │   └── index.ts
-│   ├── hooks/                # カスタムフック
-│   │   ├── useAnimation.ts       # アニメーション管理
-│   │   ├── useGameActions.ts     # ゲーム操作
+│   ├── hooks/                    # カスタムフック
+│   │   ├── useAnimation.ts          # アニメーション管理
+│   │   ├── useGameActions.ts        # ゲーム操作（※現在未使用）
+│   │   └── index.ts
+│   ├── utils/                    # UIユーティリティ
+│   │   ├── stateUI.ts                # ステートカテゴリ色取得
 │   │   └── index.ts
 │   └── index.ts
 │
-├── App.tsx                   # ルートコンポーネント
-├── App.css                   # アプリケーションスタイル
-├── main.tsx                  # エントリーポイント
-└── index.css                 # グローバルスタイル
+├── App.tsx                       # ルートコンポーネント（初期化・画面切替・ログ表示）
+├── App.css                       # 全コンポーネントのスタイル（1,020行）
+├── cli-test.ts                   # CLIテストツール（npm run play）
+├── main.tsx                      # エントリーポイント
+└── index.css                     # グローバルスタイル
 ```
 
 ## アーキテクチャの特徴
@@ -81,7 +110,9 @@ src/
 ### 1. レイヤー分離
 
 - **Core Layer（ゲームエンジン）**: React非依存の純粋なロジック
-  - `domain`: エンティティと純粋関数
+  - `domain/models`: エンティティ型定義
+  - `domain/logic`: 純粋関数群 + `effects/` で効果種別ごとの処理
+  - `domain/master`: マスターデータ（ステージ・ユニット・スキル・ステート・コマンド等）
   - `application`: ゲーム進行制御（async/await）
   - `infrastructure`: 外部接続インターフェース
 
@@ -91,24 +122,23 @@ src/
 
 - **Store Layer（状態管理）**: ReactとCoreの共有状態
   - Zustandによる状態管理
-  - ゲーム状態とUI状態の分離
+  - ゲーム状態（`useGameStateStore`）とUI状態（`useUIStateStore`）の分離
 
 - **UI Layer（React）**: ユーザーインターフェース
-  - コンポーネント、画面、カスタムフック
+  - `components/`: 再利用可能な共通パーツ
+  - `features/`: 画面単位のコンポーネント
+  - `hooks/`: カスタムフック
+  - `utils/`: UIユーティリティ
 
 ### 2. 非同期連携アーキテクチャ
 
 ゲームロジックは`async/await`でUI演出を待機：
 
-```typescript
-// GameManagerの例
-async executeCommand(command: Command) {
-  // 効果を実行
-  for (const effect of command.effects) {
-    await executeEffect(effect, gameState, bridge);
-    // ↑ bridge.notifyGameEvent()でUI演出完了を待つ
-  }
-}
+```
+GameManager → bridge.notifyGameEvent() → ReactUIBridge → useUIStateStore.enqueueAnimation()
+                                                        → AnimationDisplay がタイマーで自動完了
+GameManager → bridge.waitUI()          → ReactUIBridge → キューが空になるまで待機
+GameManager → bridge.waitPlayerInput() → ReactUIBridge → useUIStateStore.startInput() → DomesticScreen → completeInput()
 ```
 
 ### 3. 依存性の逆転
@@ -117,82 +147,17 @@ async executeCommand(command: Command) {
 - CoreはIGameUIBridgeインターフェースに依存
 - BridgeがReactの具象実装を提供
 
-## 開発の進め方
+## 実装状況
 
-### フェーズ1: モデルとロジック実装
-1. `core/domain/logic`の各関数を実装
-2. テスト駆動で各ロジックを検証
-
-### フェーズ2: UI連携
-1. ReactUIBridgeの実装
-2. Zustandストアとの連携
-3. アニメーション実装
-
-### フェーズ3: UIコンポーネント
-1. 各コンポーネントの実装
-2. スタイリング
-3. ユーザー操作の実装
-
-## 実装済み項目
-
-✅ プロジェクト初期化（package.json、tsconfig.json等）
-✅ 型定義（core/domain/models）
-✅ ロジック関数の骨格（core/domain/logic）
-✅ **GameManagerの基本実装（ゲーム進行制御）**
-✅ IGameUIBridgeインターフェース
-✅ Bridge実装（ReactUIBridge）
-✅ **CLIBridge実装（コンソールテスト用）**
-✅ 状態管理（Zustand stores）
-✅ カスタムフック（useGameActions、useAnimation）
-✅ UIコンポーネント骨格
-✅ 画面コンポーネント骨格
-✅ App.tsxとエントリーポイント
-✅ **ゲーム進行の基本フロー（フェーズ遷移、ターン処理）**
-✅ **テストデータヘルパー（ステージ・国家・ユニット生成）**
-
-### 🎮 動作確認済み
-
-- ゲーム開始フェーズ → ラウンド処理 → ゲーム終了フェーズの流れ
-- プレイヤー国家とNPC国家の交互のターン処理
-- 内政フェーズでのコマンド選択（プレイヤー入力待ち、NPC自動選択）
-- フェーズ遷移時のUI通知（notifyGameEvent）
-- ゲーム状態更新の通知（updateGameState）
-- CLIでの自動プレイモード
-
-## 未実装項目（TODO）
-
-以下の機能はまだ実装されていません：
-
-### 高優先度
-- [ ] 効果実行（EffectExecutor.ts）
-  - 国力増減、内政回数増減、ユニットステータス変更など
-- [ ] ステート処理（StateManager.ts）
-  - ステート付与/削除、排他処理、残りターン数管理
-- [ ] 数値計算（GameMath.ts）
-  - 安全な四則演算、上限下限チェック
-
-### 中優先度
-- [ ] 戦闘ロジック（BattleLogic.ts）
-  - 攻撃順序決定、ダメージ計算、国力奪取
-- [ ] ユニット管理（UnitManager.ts）
-  - ダメージ処理、死亡判定、墓地移動
-- [ ] NPC思考（NPCLogic.ts）
-  - コマンド評価、行動判断
-
-### 低優先度
-- [ ] 優先順位管理（PriorityManager.ts）
-- [ ] ReactUIBridgeとストアの統合
-- [ ] UIコンポーネントの具体的な実装
-
-## 次のステップ
-
-各ファイルの`// TODO: 実装`コメントに従って、具体的な実装を進めてください。
-
-1. **数値計算（GameMath.ts）**: 最も基礎的な処理から実装
-2. **ステート管理（StateManager.ts）**: ゲームの核となる仕組み
-3. **効果実行（EffectExecutor.ts）**: 各効果タイプの処理
-4. **戦闘ロジック（BattleLogic.ts）**: 戦闘フローの実装
-5. **GameManager**: 各フェーズの統合
-6. **UI連携**: ReactUIBridgeとストアの統合
-
-実装時は必ずテストを先に書き、TDDで進めてください。
+### 実装済み
+- ゲーム進行の基本フロー（ゲーム開始→ラウンド→ターン→フェーズ遷移→ゲーム終了）
+- 型定義（`core/domain/models` 全ファイル）
+- マスターデータ定義（`core/domain/master` 全ファイル）
+- ロジック関数群（GameMath, BattleLogic, EffectExecutor, StateExecutor, UnitManager, NPCLogic, PriorityManager, NationManager）
+- 効果処理（`effects/` 7種別）
+- IGameUIBridgeインターフェースとReactUIBridge実装
+- Zustand状態管理（gameState / uiState）
+- 全画面コンポーネント（StageSelect, Domestic, Battle, Action, GameEnd）
+- UIコンポーネント群（AnimationDisplay, BattleArea, CommandPanel, GameBoard, Graveyard, NationPanel, PhaseDisplay, StateIcon/List/Tooltip, UnitCard）
+- CLIテストツール（`npm run play`）
+- UIコンポーネントテスト（18ファイル, 約9,600行）

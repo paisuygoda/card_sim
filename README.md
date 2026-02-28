@@ -30,6 +30,12 @@ npm run build
 
 ### テスト
 
+#### ユニットテスト
+
+```bash
+npm test
+```
+
 #### CLIテストツール
 
 コンソールでゲームロジックをテストできます：
@@ -50,23 +56,6 @@ STAGE_TYPE=three npm run play     # 3国家対戦（10ラウンド）
 AUTO_PLAY=true STAGE_TYPE=two npm run play
 ```
 
-#### ユニットテスト
-
-```bash
-npm test
-```
-
-### CLIテスト（ゲームロジックのコンソールテスト）
-
-UI実装前にゲームロジックをテストするための簡易CLIツール：
-
-```bash
-npm run cli-test
-```
-
-コンソール上でゲームの進行を確認し、プレイヤー入力を標準入力で行えます。
-ロジック実装のデバッグに活用してください。
-
 ## プロジェクト構造
 
 詳細は [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) を参照してください。
@@ -74,10 +63,21 @@ npm run cli-test
 ```
 src/
 ├── core/        # ゲームロジック（React非依存）
-├── bridge/      # UI連携
+│   ├── domain/
+│   │   ├── models/    # 型定義
+│   │   ├── logic/     # 計算関数群 + effects/
+│   │   └── master/    # マスターデータ
+│   ├── application/   # GameManager（ゲーム進行制御）
+│   └── infrastructure/# IGameUIBridge
+├── bridge/      # UI連携（ReactUIBridge）
 ├── store/       # 状態管理（Zustand）
 ├── ui/          # Reactコンポーネント
+│   ├── components/   # 共通パーツ
+│   ├── features/     # 画面単位
+│   ├── hooks/        # カスタムフック
+│   └── utils/        # UIユーティリティ
 ├── App.tsx      # ルートコンポーネント
+├── cli-test.ts  # CLIテストツール
 └── main.tsx     # エントリーポイント
 ```
 
@@ -89,7 +89,7 @@ src/
 
 - **Logic Layer**: 純粋関数による計算処理
 - **Process Layer**: async/awaitによるゲーム進行制御
-- **Bridge Layer**: UI連携インターフェース
+- **Bridge Layer**: UI連携インターフェース（`IGameUIBridge`）
 - **UI Layer**: React コンポーネント
 
 詳細は `.github/copilot-instructions.md` と `docs/詳細設計書.md` を参照してください。
@@ -98,7 +98,7 @@ src/
 
 1. **ゲームロジック（core/）からReactを直接インポートしない**
 2. **すべての数値計算はGameMathを経由する**
-3. **ステート処理はStateManagerを経由する**
+3. **ステート処理はStateExecutorを経由する**
 4. **UI演出はIGameUIBridgeを経由する**
 5. **テスト駆動開発（TDD）を徹底する**
 

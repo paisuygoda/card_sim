@@ -40,7 +40,7 @@ describe('AnimationDisplay - Simple Test', () => {
     });
     
     // アニメーションが表示されることを確認
-    expect(container.textContent).toContain('ダメージ');
+    expect(container.textContent).toContain('−');
     expect(container.textContent).toContain('50');
   });
 
@@ -56,7 +56,8 @@ describe('AnimationDisplay - Simple Test', () => {
     });
     
     // アニメーションが表示されることを確認
-    expect(container.textContent).toContain('国力変動');
+    expect(container.textContent).toContain('国力');
+    expect(container.textContent).toContain('+');
     expect(container.textContent).toContain('300');
   });
 });

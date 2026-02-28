@@ -5,6 +5,7 @@
 import { Effect, Unit, EffectType, ValueType } from '../../models';
 import { IGameUIBridge, GameEvent } from '../../../infrastructure/IGameUIBridge';
 import { safeAdd, safeSubtract, calculatePercentage, clamp } from '../GameMath';
+import { hasState } from '../UnitManager';
 import { addState } from './stateEffects';
 
 
@@ -123,6 +124,7 @@ export async function applyUnitDamage(
     
     // 死亡ステート付与を試みる
     addState(unit, 'dead');
+    return hasState(unit, 'dead');
   }
   
   // 通常のダメージ

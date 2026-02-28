@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, waitFor, screen, fireEvent } from '@testing-library/react';
 import App from '../../App';
 import { useGameStateStore } from '@store/useGameStateStore';
+import { useUIStateStore } from '@store/useUIStateStore';
 import { GameManager } from '@core/application/GameManager';
 import { ReactUIBridge } from '@bridge/ReactUIBridge';
 import { STAGE_MASTER } from '@core/domain/master/StageMaster';
@@ -215,6 +216,7 @@ describe('App - ゲーム初期化処理', () => {
         currentTarget: null,
         stateQueue: [],
         effectQueue: [],
+        battleContext: null,
       };
 
       const GameManagerMock = GameManager as unknown as ReturnType<typeof vi.fn>;
@@ -493,6 +495,7 @@ describe('App - ゲーム初期化処理', () => {
         currentTarget: null,
         stateQueue: [],
         effectQueue: [],
+        battleContext: null,
       };
 
       const mockBridgeInstance = {
@@ -560,6 +563,7 @@ describe('App - ゲーム初期化処理', () => {
         currentTarget: null,
         stateQueue: [],
         effectQueue: [],
+        battleContext: null,
       };
 
       const GameManagerMock = GameManager as unknown as ReturnType<typeof vi.fn>;
@@ -585,6 +589,349 @@ describe('App - ゲーム初期化処理', () => {
       // 修正後に App.tsx に <details> デバッグパネルを追加することで通過する（Greenフェーズ）
       const detailsElement = document.querySelector('details');
       expect(detailsElement).not.toBeNull();
+    });
+  });
+});
+
+// ==========================================
+// タスク3-5-3: ACTIONフェーズ分岐テスト
+// ==========================================
+describe('App - renderScreen with ACTION phase', () => {
+  beforeEach(() => {
+    // 各テストの前にモックとストアをリセット
+    vi.clearAllMocks();
+    (ReactUIBridge as unknown as ReturnType<typeof vi.fn>).mockReset().mockImplementation(() => ({
+      notifyGameEvent: vi.fn(),
+      waitUI: vi.fn(),
+      waitPlayerInput: vi.fn(),
+      updateGameState: vi.fn(),
+    }));
+    (GameManager as unknown as ReturnType<typeof vi.fn>).mockReset().mockImplementation(() => ({
+      startGame: vi.fn().mockResolvedValue(undefined),
+      getGameState: vi.fn(),
+    }));
+    useGameStateStore.getState().resetGameState();
+  });
+
+  describe('正常系', () => {
+    it('TC-3-5-3-1: ACTIONフェーズでActionScreenが表示される', async () => {
+      // Arrange
+      const mockGameState = {
+        stageId: 1,
+        commandNum: 2,
+        currentRound: 1,
+        roundLimit: 10,
+        nations: [],
+        currentTurnPlayer: 0,
+        currentPhase: GamePhase.ACTION,
+        currentTarget: null,
+        stateQueue: [],
+        effectQueue: [],
+        battleContext: null,
+      };
+
+      const GameManagerMock = GameManager as unknown as ReturnType<typeof vi.fn>;
+      GameManagerMock.mockImplementation(() => ({
+        startGame: vi.fn().mockImplementation(async () => {
+          useGameStateStore.getState().setGameState(mockGameState);
+        }),
+        getGameState: vi.fn().mockReturnValue(mockGameState),
+      }));
+
+      // Act: ステージを選択してゲーム開始
+      render(<App />);
+      const stageCards = screen.getAllByTestId('stage-card');
+      fireEvent.click(stageCards[0]);
+
+      // Assert: ActionScreenが表示される
+      await waitFor(() => {
+        expect(screen.getByTestId('action-screen')).toBeInTheDocument();
+      });
+    });
+
+    it('TC-3-5-3-2: ACTIONフェーズでもAnimationDisplayが表示される', async () => {
+      // Arrange
+      const mockGameState = {
+        stageId: 1,
+        commandNum: 2,
+        currentRound: 1,
+        roundLimit: 10,
+        nations: [],
+        currentTurnPlayer: 0,
+        currentPhase: GamePhase.ACTION,
+        currentTarget: null,
+        stateQueue: [],
+        effectQueue: [],
+        battleContext: null,
+      };
+
+      const GameManagerMock = GameManager as unknown as ReturnType<typeof vi.fn>;
+      GameManagerMock.mockImplementation(() => ({
+        startGame: vi.fn().mockImplementation(async () => {
+          useGameStateStore.getState().setGameState(mockGameState);
+        }),
+        getGameState: vi.fn().mockReturnValue(mockGameState),
+      }));
+
+      // Act
+      render(<App />);
+      const stageCards = screen.getAllByTestId('stage-card');
+      fireEvent.click(stageCards[0]);
+
+      // Assert: ActionScreenとAnimationDisplayが同時に表示される
+      await waitFor(() => {
+        expect(screen.getByTestId('action-screen')).toBeInTheDocument();
+        expect(screen.getByTestId('animation-display')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('エッジケース', () => {
+    it('TC-3-5-3-3: gameStateがnullの場合はActionScreenが表示されない', () => {
+      // Arrange: gameState = null（初期状態）
+      // Act
+      render(<App />);
+
+      // Assert: ローディング画面が表示される
+      expect(screen.getByText('ステージ選択')).toBeInTheDocument();
+      expect(screen.queryByTestId('action-screen')).not.toBeInTheDocument();
+    });
+
+    it('TC-3-5-3-4: 他のフェーズではActionScreenが表示されない（GAME_START）', async () => {
+      // Arrange
+      const mockGameState = {
+        stageId: 1,
+        commandNum: 2,
+        currentRound: 0,
+        roundLimit: 10,
+        nations: [],
+        currentTurnPlayer: 0,
+        currentPhase: GamePhase.GAME_START,
+        currentTarget: null,
+        stateQueue: [],
+        effectQueue: [],
+        battleContext: null,
+      };
+
+      const GameManagerMock = GameManager as unknown as ReturnType<typeof vi.fn>;
+      GameManagerMock.mockImplementation(() => ({
+        startGame: vi.fn().mockImplementation(async () => {
+          useGameStateStore.getState().setGameState(mockGameState);
+        }),
+        getGameState: vi.fn().mockReturnValue(mockGameState),
+      }));
+
+      // Act
+      render(<App />);
+      const stageCards = screen.getAllByTestId('stage-card');
+      fireEvent.click(stageCards[0]);
+
+      // Assert: GameBoardが表示される、ActionScreenは表示されない
+      await waitFor(() => {
+        expect(screen.getByTestId('game-board')).toBeInTheDocument();
+        expect(screen.queryByTestId('action-screen')).not.toBeInTheDocument();
+      });
+    });
+
+    it('TC-3-5-3-4: 他のフェーズではActionScreenが表示されない（BATTLE_START）', async () => {
+      // Arrange
+      const mockGameState = {
+        stageId: 1,
+        commandNum: 2,
+        currentRound: 1,
+        roundLimit: 10,
+        nations: [],
+        currentTurnPlayer: 0,
+        currentPhase: GamePhase.BATTLE_START,
+        currentTarget: null,
+        stateQueue: [],
+        effectQueue: [],
+        battleContext: null,
+      };
+
+      const GameManagerMock = GameManager as unknown as ReturnType<typeof vi.fn>;
+      GameManagerMock.mockImplementation(() => ({
+        startGame: vi.fn().mockImplementation(async () => {
+          useGameStateStore.getState().setGameState(mockGameState);
+        }),
+        getGameState: vi.fn().mockReturnValue(mockGameState),
+      }));
+
+      // Act
+      render(<App />);
+      const stageCards = screen.getAllByTestId('stage-card');
+      fireEvent.click(stageCards[0]);
+
+      // Assert: BattleScreenが表示される、ActionScreenは表示されない
+      await waitFor(() => {
+        expect(screen.getByTestId('battle-screen')).toBeInTheDocument();
+        expect(screen.queryByTestId('action-screen')).not.toBeInTheDocument();
+      });
+    });
+
+    it('TC-3-5-3-4: 他のフェーズではActionScreenが表示されない（DOMESTIC with input waiting）', async () => {
+      // Arrange
+      const mockGameState = {
+        stageId: 1,
+        commandNum: 2,
+        currentRound: 1,
+        roundLimit: 10,
+        nations: [],
+        currentTurnPlayer: 0,
+        currentPhase: GamePhase.DOMESTIC,
+        currentTarget: null,
+        stateQueue: [],
+        effectQueue: [],
+        battleContext: null,
+      };
+
+      // input.isWaitingをtrueに設定
+      useUIStateStore.getState().setInput({ isWaiting: true, targetPattern: null });
+
+      const GameManagerMock = GameManager as unknown as ReturnType<typeof vi.fn>;
+      GameManagerMock.mockImplementation(() => ({
+        startGame: vi.fn().mockImplementation(async () => {
+          useGameStateStore.getState().setGameState(mockGameState);
+        }),
+        getGameState: vi.fn().mockReturnValue(mockGameState),
+      }));
+
+      // Act
+      render(<App />);
+      const stageCards = screen.getAllByTestId('stage-card');
+      fireEvent.click(stageCards[0]);
+
+      // Assert: DomesticScreenが表示される、ActionScreenは表示されない
+      await waitFor(() => {
+        expect(screen.getByTestId('domestic-screen')).toBeInTheDocument();
+        expect(screen.queryByTestId('action-screen')).not.toBeInTheDocument();
+      });
+    });
+
+    it('TC-3-5-3-4: 他のフェーズではActionScreenが表示されない（GAME_END）', async () => {
+      // Arrange
+      const mockGameState = {
+        stageId: 1,
+        commandNum: 2,
+        currentRound: 10,
+        roundLimit: 10,
+        nations: [
+          {
+            nationId: 'player',
+            name: 'プレイヤー国家',
+            isNPC: false,
+            power: 100,
+            units: [],
+            graveyard: [],
+            states: [],
+            domesticCommands: [],
+            actionCommands: [],
+            remainingActions: 2,
+            targetMilitaryRatio: 0.3,
+            aggressiveness: 0.5,
+            hostileNationIds: [],
+          },
+        ],
+        currentTurnPlayer: 0,
+        currentPhase: GamePhase.GAME_END,
+        currentTarget: null,
+        stateQueue: [],
+        effectQueue: [],
+        battleContext: null,
+      };
+
+      const GameManagerMock = GameManager as unknown as ReturnType<typeof vi.fn>;
+      GameManagerMock.mockImplementation(() => ({
+        startGame: vi.fn().mockImplementation(async () => {
+          useGameStateStore.getState().setGameState(mockGameState);
+        }),
+        getGameState: vi.fn().mockReturnValue(mockGameState),
+      }));
+
+      // Act
+      render(<App />);
+      const stageCards = screen.getAllByTestId('stage-card');
+      fireEvent.click(stageCards[0]);
+
+      // Assert: GameEndScreenが表示される、ActionScreenは表示されない
+      await waitFor(() => {
+        expect(screen.getByTestId('game-end-screen')).toBeInTheDocument();
+        expect(screen.queryByTestId('action-screen')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('回帰テスト', () => {
+    it('TC-3-5-3-5: DOMESTICフェーズの表示に影響がない', async () => {
+      // Arrange
+      const mockGameState = {
+        stageId: 1,
+        commandNum: 2,
+        currentRound: 1,
+        roundLimit: 10,
+        nations: [],
+        currentTurnPlayer: 0,
+        currentPhase: GamePhase.DOMESTIC,
+        currentTarget: null,
+        stateQueue: [],
+        effectQueue: [],
+        battleContext: null,
+      };
+
+      useUIStateStore.getState().setInput({ isWaiting: true, targetPattern: null });
+
+      const GameManagerMock = GameManager as unknown as ReturnType<typeof vi.fn>;
+      GameManagerMock.mockImplementation(() => ({
+        startGame: vi.fn().mockImplementation(async () => {
+          useGameStateStore.getState().setGameState(mockGameState);
+        }),
+        getGameState: vi.fn().mockReturnValue(mockGameState),
+      }));
+
+      // Act
+      render(<App />);
+      const stageCards = screen.getAllByTestId('stage-card');
+      fireEvent.click(stageCards[0]);
+
+      // Assert: DomesticScreenが表示される
+      await waitFor(() => {
+        expect(screen.getByTestId('domestic-screen')).toBeInTheDocument();
+      });
+    });
+
+    it('TC-3-5-3-6: BATTLEフェーズの表示に影響がない', async () => {
+      // Arrange
+      const mockGameState = {
+        stageId: 1,
+        commandNum: 2,
+        currentRound: 1,
+        roundLimit: 10,
+        nations: [],
+        currentTurnPlayer: 0,
+        currentPhase: GamePhase.BATTLE_START,
+        currentTarget: null,
+        stateQueue: [],
+        effectQueue: [],
+        battleContext: null,
+      };
+
+      const GameManagerMock = GameManager as unknown as ReturnType<typeof vi.fn>;
+      GameManagerMock.mockImplementation(() => ({
+        startGame: vi.fn().mockImplementation(async () => {
+          useGameStateStore.getState().setGameState(mockGameState);
+        }),
+        getGameState: vi.fn().mockReturnValue(mockGameState),
+      }));
+
+      // Act
+      render(<App />);
+      const stageCards = screen.getAllByTestId('stage-card');
+      fireEvent.click(stageCards[0]);
+
+      // Assert: BattleScreenが表示される
+      await waitFor(() => {
+        expect(screen.getByTestId('battle-screen')).toBeInTheDocument();
+      });
     });
   });
 });

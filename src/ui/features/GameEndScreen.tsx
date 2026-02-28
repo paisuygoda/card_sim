@@ -29,7 +29,7 @@ export const GameEndScreen: React.FC<GameEndScreenProps> = ({ onReturnToSelect, 
   });
 
   return (
-    <div className="game-end-screen">
+    <div className="game-end-screen" data-testid="game-end-screen">
       <h1>ゲーム終了</h1>
       <h2>勝者: {winner.name}</h2>
       <div className="final-results">

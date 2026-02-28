@@ -1,0 +1,31 @@
+/* StateTooltip スタイル */
+
+.state-tooltip {
+  position: fixed;
+  background-color: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  max-width: 250px;
+  z-index: 1000;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.state-tooltip-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  padding-bottom: 4px;
+}
+
+.state-tooltip-effects {
+  margin: 4px 0;
+}
+
+.state-tooltip-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.8;
+}

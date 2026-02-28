@@ -71,6 +71,16 @@ export function findUnitById(
   return null;
 } 
 
+/**
+ * ユニットがステートを持っているか
+ * @param unit 対象ユニット
+ * @param stateId ステートID
+ * @returns ステートを持っているか
+ */
+export function hasState(unit: Unit, stateId: string): boolean {
+  return unit.states.some(state => state.stateId === stateId);
+}
+
 export const extractNationIdFromUnitId = (unitId: string): string | null => {
   const parts = unitId.split('-');
   if (parts.length < 2) {

@@ -1,4 +1,4 @@
-import { BattleContext, GameState, Unit, Nation, GamePhase } from '../models';
+import { GameState, Unit, Nation, GamePhase } from '../models';
 import { IGameUIBridge, GameEvent } from '../../infrastructure/IGameUIBridge';
 import { findNationById } from './NationManager';
 import { calculateUnitEffectiveAttack } from './UnitManager';
@@ -15,6 +15,16 @@ import { applyUnitDamage } from './effects';
  */
 
 /**
+ * ユニットが死亡状態か判定するヘルパー関数（パフォーマンス最適化）
+ * @param unit - 対象ユニット
+ * @returns 死亡ステートを持つ場合true
+ */
+function isDead(unit: Unit | null): boolean {
+  if (!unit) return false;
+  return unit.states.some(s => s.stateId === 'dead');
+}
+
+/**
  * 戦闘フェーズ全体の実行（設計書3.3.5.1）
  * @param gameState ゲーム状態
  * @param attackerNationId 攻撃側国家ID
@@ -27,8 +37,8 @@ export async function executeBattle(
   defenderNationId: string,
   bridge: IGameUIBridge
 ): Promise<void> {
-  // 戦闘コンテキストを初期化
-  const battleContext: BattleContext = {
+  // 戦闘コンテキストをgameStateに直接設定（UIが即時参照できるよう通知前に設定）
+  gameState.battleContext = {
     attackerNationId,
     defenderNationId,
     attackOrder: [],
@@ -37,6 +47,7 @@ export async function executeBattle(
     targetIndex: 0,
     pendingPowerDamage: 0,
   };
+  bridge.updateGameState(gameState);
 
   // 戦闘開始通知
   await bridge.notifyGameEvent(GameEvent.BATTLE_START, {
@@ -44,27 +55,29 @@ export async function executeBattle(
     defenderNationId,
   });
 
-  const attackerNation = findNationById(gameState, battleContext.attackerNationId);
-  const defenderNation = findNationById(gameState, battleContext.defenderNationId);
-    if (!attackerNation || !defenderNation) {
+  const attackerNation = findNationById(gameState, gameState.battleContext!.attackerNationId);
+  const defenderNation = findNationById(gameState, gameState.battleContext!.defenderNationId);
+  if (!attackerNation || !defenderNation) {
     bridge.log('Invalid nation IDs in battle context', 'error');
     return;
   }
 
   // 1. 戦闘開始ステップ
-  await battleStartStep(attackerNation, defenderNation, gameState, battleContext, bridge);
+  await battleStartStep(attackerNation, defenderNation, gameState, bridge);
 
   // 2. 各ユニットの攻撃処理
-  await executeUnitAttacks(attackerNation, defenderNation, gameState, battleContext, bridge);
+  await executeUnitAttacks(attackerNation, defenderNation, gameState, bridge);
 
   // 3. 戦闘終了ステップ
-  await battleEndStep(attackerNation, defenderNation, gameState, battleContext, bridge);
+  await battleEndStep(attackerNation, defenderNation, gameState, bridge);
 
   // 戦闘終了通知
   await bridge.notifyGameEvent(GameEvent.BATTLE_END, {
     attackerNationId,
     defenderNationId,
   });
+  gameState.battleContext = null;
+  bridge.updateGameState(gameState);
 }
 
 /**
@@ -72,27 +85,21 @@ export async function executeBattle(
  * @param attackerNation 攻撃側国家
  * @param defenderNation 防御側国家
  * @param gameState ゲーム状態
- * @param battleContext 戦闘コンテキスト
  * @param bridge UIブリッジ
  */
 export async function battleStartStep(
   attackerNation: Nation,
   defenderNation: Nation,
   gameState: GameState,
-  battleContext: BattleContext,
   bridge: IGameUIBridge
 ): Promise<void> {
+  const ctx = gameState.battleContext!;
+
   // 2. ステート処理実行
   await executeStateProcessing(gameState, GamePhase.BATTLE_START, bridge);
 
   // 3. 攻撃順序決定
-
-  if (!attackerNation || !defenderNation) {
-    bridge.log('Invalid nation IDs in battle context', 'error');
-    return;
-  }
-
-  battleContext.attackOrder = determineAttackOrder(attackerNation, defenderNation);
+  ctx.attackOrder = determineAttackOrder(attackerNation, defenderNation);
 }
 
 /**
@@ -111,12 +118,12 @@ export function determineAttackOrder(
 
   for (let i = 0; i < 3; i++) {
     const attackerUnit = attackerNation.units[i];
-    if (attackerUnit && !attackerUnit.states.some(s => s.stateId === 'dead')) {
+    if (attackerUnit && !isDead(attackerUnit)) {
       frontlineUnits.push({ unit: attackerUnit, position: i, isAttacker: true });
     }
 
     const defenderUnit = defenderNation.units[i];
-    if (defenderUnit && !defenderUnit.states.some(s => s.stateId === 'dead')) {
+    if (defenderUnit && !isDead(defenderUnit)) {
       frontlineUnits.push({ unit: defenderUnit, position: i, isAttacker: false });
     }
   }
@@ -152,94 +159,151 @@ export function determineAttackOrder(
  * @param attackerNation 攻撃側国家
  * @param defenderNation 防御側国家
  * @param gameState ゲーム状態
- * @param battleContext 戦闘コンテキスト
  * @param bridge UIブリッジ
  */
 export async function executeUnitAttacks(
   attackerNation: Nation,
   defenderNation: Nation,
   gameState: GameState,
-  battleContext: BattleContext,
   bridge: IGameUIBridge
 ): Promise<void> {
+  const ctx = gameState.battleContext!;
+
   // 攻撃順序配列の各ユニットについて攻撃処理を実行
-  while (battleContext.currentAttackIndex < battleContext.attackOrder.length) {
+  while (ctx.currentAttackIndex < ctx.attackOrder.length) {
     // 1. 攻撃開始ステップ
-    await attackStartStep(gameState, battleContext, bridge);
+    await attackStartStep(gameState, bridge);
 
     // 攻撃者が設定されていない場合（全員死亡等）
-    if (!battleContext.currentAttacker) {
+    if (!ctx.currentAttacker) {
       break;
     }
 
     // 2. 攻撃対象決定ステップ
-    battleContext.targetUnits = determineTargets(battleContext.currentAttacker, attackerNation, defenderNation);
+    ctx.targetUnits = determineTargets(ctx.currentAttacker, attackerNation, defenderNation);
 
     // スキル発動通知
-    const activatingSkill = MasterData.getSkill(battleContext.currentAttacker.skillId);
+    const activatingSkill = MasterData.getSkill(ctx.currentAttacker.skillId);
     await bridge.notifyGameEvent(GameEvent.SKILL_ACTIVATE, {
-      attackerId: battleContext.currentAttacker.unitId!,
-      skillId: battleContext.currentAttacker.skillId,
+      attackerId: ctx.currentAttacker.unitId!,
+      skillId: ctx.currentAttacker.skillId,
       skillName: activatingSkill.name,
-      targets: battleContext.targetUnits.map(t => t?.unitId ?? null),
+      targets: ctx.targetUnits.map(t => t?.unitId ?? null),
+      skillVisualType: activatingSkill.skillVisualType,
     });
 
     // 3. 攻撃直前ステップ
-    await beforeAttackStep(gameState, battleContext, bridge);
+    await beforeAttackStep(gameState, bridge);
 
     // 4. ユニットダメージステップ, 国力ダメージステップ
-    battleContext.targetIndex = 0;
-    await unitDamageStep(attackerNation, defenderNation, gameState, battleContext, bridge);
+    ctx.targetIndex = 0;
+    await unitDamageStep(attackerNation, gameState, bridge);
 
     // 6. 攻撃直後ステップ
-    await afterAttackStep(gameState, battleContext, bridge);
+    await afterAttackStep(gameState, bridge);
 
     // 7. 攻撃終了ステップ
-    await attackEndStep(gameState, battleContext, bridge);
+    await attackEndStep(gameState, bridge);
 
     // 次の攻撃者へ
-    battleContext.currentAttackIndex++;
-    battleContext.currentAttacker = undefined;
+    ctx.currentAttackIndex++;
+    ctx.currentAttacker = undefined;
+    bridge.updateGameState(gameState);
   }
 }
 
 /**
  * 攻撃開始ステップ（設計書3.3.5.3.1）
  * @param gameState ゲーム状態
- * @param battleContext 戦闘コンテキスト
  * @param bridge UIブリッジ
  */
 export async function attackStartStep(
   gameState: GameState,
-  battleContext: BattleContext,
   bridge: IGameUIBridge
 ): Promise<void> {
+  const ctx = gameState.battleContext!;
+
   // 1. 攻撃順序配列から攻撃者を取得
   // 死亡ユニットはスキップ
-  while (battleContext.currentAttackIndex < battleContext.attackOrder.length) {
-    const attacker = battleContext.attackOrder[battleContext.currentAttackIndex];
+  while (ctx.currentAttackIndex < ctx.attackOrder.length) {
+    const attacker = ctx.attackOrder[ctx.currentAttackIndex];
     
     // 死亡ステートチェック
-    if (attacker.states.some(s => s.stateId === 'dead')) {
-      battleContext.currentAttackIndex++;
+    if (isDead(attacker)) {
+      ctx.currentAttackIndex++;
       continue;
     }
 
     // 2. 攻撃中ユニットとして設定
-    battleContext.currentAttacker = attacker;
+    ctx.currentAttacker = attacker;
+    bridge.updateGameState(gameState);
     break;
   }
 
   // 全てスキップされた場合
-  if (!battleContext.currentAttacker) {
+  if (!ctx.currentAttacker) {
     return;
   }
 
   // 3. 被攻撃ユニットインデックスをリセット
-  battleContext.targetIndex = 0;
+  ctx.targetIndex = 0;
 
   // 4. ステート処理実行
   await executeStateProcessing(gameState, GamePhase.ATTACK_START, bridge);
+}
+
+/**
+ * 攻撃範囲に応じた対象インデックス配列を取得（内部ヘルパー）
+ * @param pattern ターゲットパターン
+ * @returns インデックス配列
+ */
+function getTargetIndices(pattern: string): number[] {
+  switch (pattern) {
+    case 'FRONT': return [0];
+    case 'MID': return [1];
+    case 'BACK': return [2];
+    case 'FRONT_MID': return [0, 1];
+    case 'MID_BACK': return [1, 2];
+    case 'FRONT_BACK': return [0, 2];
+    case 'ALL': return [0, 1, 2];
+    default: return [0];
+  }
+}
+
+/**
+ * 対象範囲をシフトする（内部ヘルパー）
+ * @param indices 元のインデックス配列
+ * @param offset シフト量（正=後ろ、負=前）
+ * @returns シフト後のインデックス配列
+ */
+function shiftIndices(indices: number[], offset: number): number[] {
+  return indices.map(i => i + offset).filter(i => i >= 0 && i < 3);
+}
+
+/**
+ * 指定インデックス範囲に生存ユニットがいるかチェック（内部ヘルパー）
+ * @param nation 対象国家
+ * @param indices チェックするインデックス配列
+ * @returns 生存ユニットが1体でもいればtrue
+ */
+function hasAliveUnitAt(nation: Nation, indices: number[]): boolean {
+  return indices.some(i => {
+    const unit = nation.units[i];
+    return unit !== null && !isDead(unit);
+  });
+}
+
+/**
+ * 指定インデックス範囲から被攻撃ユニット配列を構築（内部ヘルパー）
+ * @param nation 対象国家
+ * @param indices 対象インデックス配列
+ * @returns ユニット配列（生存ユニットまたはnull）
+ */
+function buildTargetArray(nation: Nation, indices: number[]): (Unit | null)[] {
+  return indices.map(i => {
+    const unit = nation.units[i];
+    return (unit && !isDead(unit)) ? unit : null;
+  });
 }
 
 /**
@@ -256,86 +320,22 @@ export function determineTargets(
 ): (Unit | null)[] {
   const targetNation = attacker.ownerNationId === attackerNation.nationId ? defenderNation : attackerNation;
   const skill = MasterData.getSkill(attacker.skillId);
-  const targetPattern = skill.targetPattern;
-
-  // 攻撃範囲に応じた対象インデックス配列を取得
-  const getTargetIndices = (pattern: string): number[] => {
-    switch (pattern) {
-      case 'FRONT': return [0];
-      case 'MID': return [1];
-      case 'BACK': return [2];
-      case 'FRONT_MID': return [0, 1];
-      case 'MID_BACK': return [1, 2];
-      case 'FRONT_BACK': return [0, 2];
-      case 'ALL': return [0, 1, 2];
-      default: return [0];
-    }
-  };
-
-  // 対象範囲をシフトする
-  const shiftIndices = (indices: number[], offset: number): number[] => {
-    return indices.map(i => i + offset).filter(i => i >= 0 && i < 3);
-  };
-
-  // 指定インデックス範囲に生存ユニットがいるかチェック
-  const hasAliveUnit = (indices: number[]): boolean => {
-    return indices.some(i => {
-      const unit = targetNation.units[i];
-      return unit !== null && !unit.states.some(s => s.stateId === 'dead');
-    });
-  };
-
-  // 指定インデックス範囲から被攻撃ユニット配列を構築
-  const buildTargetArray = (indices: number[]): (Unit | null)[] => {
-    return indices.map(i => {
-      const unit = targetNation.units[i];
-      if (unit && !unit.states.some(s => s.stateId === 'dead')) {
-        return unit;
-      }
-      return null;
-    });
-  };
-
-  const baseIndices = getTargetIndices(targetPattern);
+  const baseIndices = getTargetIndices(skill.targetPattern);
   const targetArrayLength = baseIndices.length;
 
   // 前線に生存ユニットがいない場合は空配列
-  const hasFrontlineUnit = [0, 1, 2].some(i => {
-    const unit = targetNation.units[i];
-    return unit !== null && !unit.states.some(s => s.stateId === 'dead');
-  });
-
-  if (!hasFrontlineUnit) {
+  if (!hasAliveUnitAt(targetNation, [0, 1, 2])) {
     return new Array(targetArrayLength).fill(null);
   }
 
-  // 正規対象を確認
-  if (hasAliveUnit(baseIndices)) {
-    return buildTargetArray(baseIndices);
-  }
-
-  // 1つ後ろ
-  const back1 = shiftIndices(baseIndices, 1);
-  if (back1.length > 0 && hasAliveUnit(back1)) {
-    return buildTargetArray(back1);
-  }
-
-  // 2つ後ろ
-  const back2 = shiftIndices(baseIndices, 2);
-  if (back2.length > 0 && hasAliveUnit(back2)) {
-    return buildTargetArray(back2);
-  }
-
-  // 1つ手前
-  const front1 = shiftIndices(baseIndices, -1);
-  if (front1.length > 0 && hasAliveUnit(front1)) {
-    return buildTargetArray(front1);
-  }
-
-  // 2つ手前
-  const front2 = shiftIndices(baseIndices, -2);
-  if (front2.length > 0 && hasAliveUnit(front2)) {
-    return buildTargetArray(front2);
+  // 攻撃対象の優先順位: 正規位置 → 後ろ+1 → 後ろ+2 → 前-1 → 前-2
+  const candidateOffsets = [0, 1, 2, -1, -2];
+  
+  for (const offset of candidateOffsets) {
+    const shiftedIndices = shiftIndices(baseIndices, offset);
+    if (shiftedIndices.length > 0 && hasAliveUnitAt(targetNation, shiftedIndices)) {
+      return buildTargetArray(targetNation, shiftedIndices);
+    }
   }
 
   // どこにもいない場合はnull埋め
@@ -345,29 +345,28 @@ export function determineTargets(
 /**
  * 攻撃直前ステップ（設計書3.3.5.3.3）
  * @param gameState ゲーム状態
- * @param battleContext 戦闘コンテキスト
  * @param bridge UIブリッジ
  */
 export async function beforeAttackStep(
   gameState: GameState,
-  battleContext: BattleContext,
   bridge: IGameUIBridge
 ): Promise<void> {
-  if (!battleContext.currentAttacker) return;
+  const ctx = gameState.battleContext!;
+  if (!ctx.currentAttacker) return;
 
-  const skill = MasterData.getSkill(battleContext.currentAttacker.skillId);
+  const skill = MasterData.getSkill(ctx.currentAttacker.skillId);
 
   // 1. スキルに攻撃前効果が設定されている場合はその処理を実行
   for (const effect of skill.preEffects) {
     if (effect.target === 'SELF') {
       await executeEffect(effect.effect, gameState, bridge, {
-        selfId: battleContext.currentAttacker.unitId,
+        selfId: ctx.currentAttacker.unitId,
       });
     } else if (effect.target === 'TARGET') {
-      for (const target of battleContext.targetUnits) {
+      for (const target of ctx.targetUnits) {
         if (target) {
           await executeEffect(effect.effect, gameState, bridge, {
-            selfId: battleContext.currentAttacker.unitId,
+            selfId: ctx.currentAttacker.unitId,
             selectedId: target.unitId,
           });
         }
@@ -382,26 +381,23 @@ export async function beforeAttackStep(
 /**
  * ユニットダメージステップ（設計書3.3.5.3.4）
  * @param attackerNation 攻撃側国家
- * @param defenderNation 防御側国家
  * @param gameState ゲーム状態
- * @param battleContext 戦闘コンテキスト
  * @param bridge UIブリッジ
  */
 export async function unitDamageStep(
   attackerNation: Nation,
-  _defenderNation: Nation,
   gameState: GameState,
-  battleContext: BattleContext,
   bridge: IGameUIBridge
 ): Promise<void> {
-  if (!battleContext.currentAttacker) return;
+  const ctx = gameState.battleContext!;
+  if (!ctx.currentAttacker) return;
 
-  const skill = MasterData.getSkill(battleContext.currentAttacker.skillId);
-  const attackPower = calculateUnitEffectiveAttack(battleContext.currentAttacker);
+  const skill = MasterData.getSkill(ctx.currentAttacker.skillId);
+  const attackPower = calculateUnitEffectiveAttack(ctx.currentAttacker);
 
   // 被攻撃ユニット配列をループ
-  while (battleContext.targetIndex < battleContext.targetUnits.length) {
-    const target = battleContext.targetUnits[battleContext.targetIndex];
+  while (ctx.targetIndex < ctx.targetUnits.length) {
+    const target = ctx.targetUnits[ctx.targetIndex];
 
     // 1. 処理対象確認
     if (target !== null) {
@@ -410,6 +406,7 @@ export async function unitDamageStep(
 
       // 3. HPから減算
       applyUnitDamage(target, damage);
+      bridge.updateGameState(gameState);
 
       // 4. UIにDAMAGE_EVENTを送信
       await bridge.notifyGameEvent(GameEvent.UNIT_DAMAGE, {
@@ -420,57 +417,56 @@ export async function unitDamageStep(
       // 5. スキルにユニット追加効果が設定されている場合はその処理を行う
       for (const effect of skill.unitEffects) {
         await executeEffect(effect, gameState, bridge, {
-          selfId: battleContext.currentAttacker.unitId,
+          selfId: ctx.currentAttacker.unitId,
           selectedId: target.unitId,
         });
       }
     }
 
-    if (battleContext.currentAttacker.ownerNationId === attackerNation.nationId) {
-
-      //国力奪取計算
+    if (ctx.currentAttacker.ownerNationId === attackerNation.nationId) {
+      // 国力奪取計算
       let hpLossRate = 1.0; // ポジションが空の場合は1
 
       if (target !== null) {
         // HP損失率 = (最大HP - 現在HP) / 最大HP
-        hpLossRate = (target.maxHP - target.currentHP) / target.maxHP;
+        hpLossRate = target.maxHP > 0 
+          ? (target.maxHP - target.currentHP) / target.maxHP 
+          : 0;
       }
 
-      // 国力ダメージ = 攻撃力 × 国力奨取率 × HP損失率
+      // 国力ダメージ = 攻撃力 × 国力奪取率 × HP損失率
       const powerDamage = safeMultiply(
         safeMultiply(attackPower, skill.powerStealRate),
         hpLossRate
       );
 
-      // 暂定国力奨取量に加算
-      battleContext.pendingPowerDamage = safeAdd(
-        battleContext.pendingPowerDamage,
+      // 暫定国力奪取量に加算
+      ctx.pendingPowerDamage = safeAdd(
+        ctx.pendingPowerDamage,
         powerDamage
       );
     }
 
-    // 3. スキルに国家追加効果が設定されている場合はその処理を行う
+    // 6. スキルに国家追加効果が設定されている場合はその処理を行う
     for (const effect of skill.nationEffects) {
       await executeEffect(effect, gameState, bridge, {
         selfId: attackerNation.nationId,
-        selectedId: battleContext.defenderNationId.toString(),
+        selectedId: ctx.defenderNationId.toString(),
       });
     }
 
-    // 6. 被攻撃ユニットインデックスをインクリメント
-    battleContext.targetIndex++;
+    // 7. 被攻撃ユニットインデックスをインクリメント
+    ctx.targetIndex++;
   }
 }
 
 /**
  * 攻撃直後ステップ（設計書3.3.5.3.6）
  * @param gameState ゲーム状態
- * @param _battleContext 戦闘コンテキスト
  * @param bridge UIブリッジ
  */
 export async function afterAttackStep(
   gameState: GameState,
-  _battleContext: BattleContext,
   bridge: IGameUIBridge
 ): Promise<void> {
   // 1. ステート処理実行
@@ -480,12 +476,10 @@ export async function afterAttackStep(
 /**
  * 攻撃終了ステップ（設計書3.3.5.3.7）
  * @param gameState ゲーム状態
- * @param _battleContext 戦闘コンテキスト
  * @param bridge UIブリッジ
  */
 export async function attackEndStep(
   gameState: GameState,
-  _battleContext: BattleContext,
   bridge: IGameUIBridge
 ): Promise<void> {
   // 1. ステート処理実行
@@ -497,29 +491,30 @@ export async function attackEndStep(
  * @param attackerNation 攻撃側国家
  * @param defenderNation 防御側国家
  * @param gameState ゲーム状態
- * @param battleContext 戦闘コンテキスト
  * @param bridge UIブリッジ
  */
 export async function battleEndStep(
   attackerNation: Nation,
   defenderNation: Nation,
   gameState: GameState,
-  battleContext: BattleContext,
   bridge: IGameUIBridge
 ): Promise<void> {
+  const ctx = gameState.battleContext!;
+
   // 1. 国力ダメージ確定
-  const actualDamage = Math.min(defenderNation.power, battleContext.pendingPowerDamage);
+  const actualDamage = Math.min(defenderNation.power, ctx.pendingPowerDamage);
   defenderNation.power = safeSubtract(defenderNation.power, actualDamage);
   attackerNation.power = safeAdd(attackerNation.power, actualDamage);
+  bridge.updateGameState(gameState);
 
   // 2. UIにPOWER_DAMAGE_EVENTを送信
   await bridge.notifyGameEvent(GameEvent.POWER_DAMAGE, {
-    nationId: battleContext.defenderNationId,
+    nationId: ctx.defenderNationId,
     amount: actualDamage,
   });
   await bridge.notifyGameEvent(GameEvent.POWER_HEAL, {
-    nationId: battleContext.attackerNationId,
-    amount: -actualDamage,
+    nationId: ctx.attackerNationId,
+    amount: actualDamage,
   });
 
   // 3. ステート処理実行

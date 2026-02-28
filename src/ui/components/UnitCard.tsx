@@ -1,6 +1,7 @@
 import React from 'react';
 import { Unit } from '@core/domain/models';
 import { MasterData } from '@core/domain/master';
+import { StateIconList } from './StateIconList';
 
 /**
  * UnitCard - ユニットカード表示コンポーネント
@@ -10,8 +11,16 @@ import { MasterData } from '@core/domain/master';
 
 interface UnitCardProps {
   unit: Unit | null;
-  position: 'front' | 'mid' | 'back' | 'bench';
+  position: 'front' | 'mid' | 'back' | 'bench' | 'graveyard';
+  /** true のとき data-testid="current-attacker" を付与してハイライト */
+  isCurrentAttacker?: boolean;
   onClick?: () => void;
+  /** このユニットが選択可能かどうか */
+  isSelectable?: boolean;
+  /** このユニットが現在選択中かどうか */
+  isSelected?: boolean;
+  /** 墓地ユニットかどうか */
+  isGraveyard?: boolean;
 }
 
 /** ポジションを日本語ラベルに変換 */
@@ -20,7 +29,11 @@ const POSITION_LABEL: Record<UnitCardProps['position'], string> = {
   mid: '中衛',
   back: '後衛',
   bench: 'ベンチ',
+  graveyard: '墓地',
 };
+
+/** カードUIに表示可能な状態アイコンの最大数 */
+const MAX_DISPLAYED_STATES = 5;
 
 /** HPの割合に応じた背景色を返す */
 function getHpColor(ratio: number): string {
@@ -29,14 +42,31 @@ function getHpColor(ratio: number): string {
   return 'red';
 }
 
-export const UnitCard: React.FC<UnitCardProps> = React.memo(({ unit, position, onClick }) => {
+export const UnitCard: React.FC<UnitCardProps> = React.memo(({ unit, position, isCurrentAttacker = false, onClick, isSelectable = false, isSelected = false, isGraveyard = false }) => {
+  // クリックハンドラ: isSelectable が false の場合は onClick を呼び出さない
+  const handleClick = () => {
+    if (isSelectable && onClick) {
+      onClick();
+    }
+  };
+
+  // キーボードハンドラ: Enter または Space キーで onClick を発火
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isSelectable && onClick && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      onClick();
+    }
+  };
+
   if (!unit) {
     return (
       <div
-        className="unit-card empty"
-        onClick={onClick}
+        className={`unit-card empty${isSelectable ? ' selectable' : ''}${isGraveyard ? ' graveyard-unit' : ''}`}
+        data-unit-position={position}
+        onClick={handleClick}
         role={onClick ? 'button' : undefined}
-        tabIndex={onClick ? 0 : undefined}
+        tabIndex={onClick && isSelectable ? 0 : undefined}
+        aria-disabled={onClick ? !isSelectable : undefined}
       >
         <p>空</p>
       </div>
@@ -62,11 +92,17 @@ export const UnitCard: React.FC<UnitCardProps> = React.memo(({ unit, position, o
 
   return (
     <div
-      className={`unit-card${isDefeated ? ' disabled' : ''}`}
-      onClick={onClick}
+      className={`unit-card${isDefeated ? ' disabled' : ''}${isCurrentAttacker ? ' current-attacker' : ''}${isSelectable ? ' selectable' : ''}${isSelected ? ' selected' : ''}${isGraveyard ? ' graveyard-unit' : ''}`}
+      data-testid={isCurrentAttacker ? 'current-attacker' : undefined}
+      data-unitid={unit.unitId}
+      data-unit-position={position}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
+      aria-disabled={onClick ? !isSelectable : undefined}
     >
+      {isSelected && <span className="selected-mark">✓</span>}
       <h3>{unit.name}</h3>
       <p>{POSITION_LABEL[position]}</p>
       <p>HP: {unit.currentHP} / {unit.maxHP}</p>
@@ -91,7 +127,7 @@ export const UnitCard: React.FC<UnitCardProps> = React.memo(({ unit, position, o
       {isDefeated && <p>戦闘不能</p>}
       <p>攻撃力: {unit.attack}</p>
       <p>スキル: <span>{skillName}</span></p>
-      {/* TODO: ステート表示 */}
+      <StateIconList states={unit.states} maxDisplay={MAX_DISPLAYED_STATES} />
     </div>
   );
 });

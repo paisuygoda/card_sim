@@ -3,6 +3,7 @@ import { useGameStateStore } from '@store/useGameStateStore';
 import { useUIStateStore } from '@store/useUIStateStore';
 import { GameBoard } from '@ui/components/GameBoard';
 import { AnimationDisplay } from '@ui/components/AnimationDisplay';
+import { ActionScreen } from '@ui/features/ActionScreen';
 import { DomesticScreen } from '@ui/features/DomesticScreen';
 import { BattleScreen } from '@ui/features/BattleScreen';
 import { GameEndScreen } from '@ui/features/GameEndScreen';
@@ -120,6 +121,11 @@ function App() {
       gameState.currentPhase === GamePhase.BATTLE_END
     ) {
       return <BattleScreen />;
+    }
+
+    // 行動フェーズ
+    if (gameState.currentPhase === GamePhase.ACTION) {
+      return <ActionScreen />;
     }
 
     // デフォルトはゲームボード表示

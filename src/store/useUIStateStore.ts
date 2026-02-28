@@ -14,7 +14,7 @@ interface AnimationState {
   isPlaying: boolean;
 }
 
-interface AnimationQueueItem {
+export interface AnimationQueueItem {
   eventType: GameEvent;
   data: any;
 }

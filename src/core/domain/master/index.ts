@@ -3,9 +3,11 @@ import { COMMAND_MASTER } from "./CommandMaster";
 import { EFFECT_MASTER } from "./EffectMaster";
 import { NATION_MASTER } from "./NationMaster";
 import { SKILL_MASTER } from "./SkillMaster";
-import { STATE_MASTER } from "./StateMaster";
+import { STATE_MASTER, setupState, getStateDescription, getStateIcon, getStateCategory, StateCategory } from "./StateMaster";
 import { STAGE_MASTER } from "./StageMaster";
 import { UNIT_MASTER } from "./UnitMaster";
+
+export { getStateDescription, getStateIcon, getStateCategory, StateCategory };
 
 export const MasterData = {
     getCommand: (id: string): Command => {
@@ -29,13 +31,8 @@ export const MasterData = {
         return skill;
     },
     getState: (stateId: string, unitId: string, ownerNationId: string): State => {
-        const baseState = STATE_MASTER[stateId];
-        if (!baseState) throw new Error(`State ID ${stateId} not found`);
-        return {
-            ...baseState,
-            unitId,
-            ownerNationId,
-        };
+        if (!STATE_MASTER[stateId]) throw new Error(`State ID ${stateId} not found`);
+        return setupState(stateId, unitId, ownerNationId);
     },
     getUnit: (baseUnitId: string, ownerNationId: string): Unit => {
         const baseUnit = UNIT_MASTER[baseUnitId];
