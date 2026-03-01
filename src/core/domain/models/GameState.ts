@@ -39,4 +39,7 @@ export interface GameState {
 
   /** 戦闘コンテキスト（戦闘フェーズ中のみ設定、それ以外はnull） */
   battleContext: BattleContext | null;
+
+  /** 最終順位（GAME_ENDフェーズ時に設定、国力降順） */
+  finalRanking?: Nation[];
 }

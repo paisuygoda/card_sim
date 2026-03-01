@@ -1,6 +1,7 @@
 import React from 'react';
 import { Nation } from '@core/domain/models';
 import { StateIconList } from './StateIconList';
+import styles from './NationPanel.module.css';
 
 /**
  * NationPanel - 国家情報表示パネル
@@ -39,17 +40,17 @@ export const NationPanel: React.FC<NationPanelProps> = React.memo(({ nation, isC
       : null;
 
   return (
-    <div className={`nation-panel${isCurrentTurn ? ' current-turn' : ''}`}>
+    <div className={[styles['nation-panel'], isCurrentTurn && styles['current-turn']].filter(Boolean).join(' ')}>
       <div className="nation-header">
         <h2>{nation.name}</h2>
         <span className="nation-badge">{nation.isNPC ? 'CPU' : 'プレイヤー'}</span>
       </div>
       <p>国力: {nation.power}</p>
       {gaugeWidth !== null && (
-        <div className="power-gauge">
+        <div className={styles['power-gauge']}>
           <div
             data-testid="power-gauge-fill"
-            className="power-gauge-fill"
+            className={styles['power-gauge-fill']}
             style={{ 
               width: gaugeWidth,
               backgroundColor: getPowerColor(progressPercent)

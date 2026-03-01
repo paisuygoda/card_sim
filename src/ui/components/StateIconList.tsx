@@ -4,7 +4,7 @@ import { GameEvent } from '@core/infrastructure/IGameUIBridge';
 import { useUIStateStore } from '@store/useUIStateStore';
 import { StateIcon } from './StateIcon';
 import { StateTooltip } from './StateTooltip';
-import './StateIconList.css';
+import styles from './StateIconList.module.css';
 
 export interface StateIconListProps {
   /** 表示するステート配列 */
@@ -87,7 +87,7 @@ export const StateIconList: React.FC<StateIconListProps> = ({
 
   return (
     <>
-      <div className="state-icon-list" role="list">
+      <div className={styles['state-icon-list']} role="list">
         {displayStates.map((state) => (
           <div 
             key={state.stateId} 
@@ -108,7 +108,7 @@ export const StateIconList: React.FC<StateIconListProps> = ({
 
         {overflowCount > 0 && (
           <div
-            className="state-icon-overflow"
+            className={styles['state-icon-overflow']}
             aria-label={`残り${overflowCount}件のステート`}
           >
             +{overflowCount}

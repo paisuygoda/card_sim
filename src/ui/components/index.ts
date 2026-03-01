@@ -8,6 +8,8 @@ export * from './BattleArea';
 export * from './CommandPanel';
 export * from './GameBoard';
 export * from './Graveyard';
+export * from './LogPanel';
+export * from './NationLayoutGrid';
 export * from './NationPanel';
 export * from './PhaseDisplay';
 export * from './StateIcon';

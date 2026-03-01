@@ -2,114 +2,45 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { NationPanel } from '../NationPanel';
-import { Nation, State, StateVisualType } from '@core/domain/models';
+import type { Nation } from '@core/domain/models';
+import {
+  createMockNation,
+  createBuffState,
+  createDebuffState,
+  createDeadState,
+  createDefenseBuffState,
+  createProsperityState,
+} from '@ui/__tests__/fixtures';
 
 // -----------------------------------------------------------------------
-// テストデータ
+// テストデータ（共有フィクスチャ使用）
 // -----------------------------------------------------------------------
 
 /** テスト用の勝利閾値 */
 const TEST_POWER_WIN_THRESHOLD = 1000;
 
-// -----------------------------------------------------------------------
-// ステートデータ（Task 3-1-5用）
-// -----------------------------------------------------------------------
+// ステートデータ
+const buffState = createBuffState();
+const debuffState = createDebuffState();
+const neutralState = createDeadState();
+const buffDefenseState = createDefenseBuffState({ stacks: 2, duration: 2 });
+const permanentStackedState = createProsperityState();
 
-/** バフ系・期限付き・スタックなし */
-const buffState: State = {
-  stateId: 'attackPowerUp',
-  name: '攻撃力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: 3,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** デバフ系・スタックあり */
-const debuffState: State = {
-  stateId: 'attackPowerDown',
-  name: '攻撃力低下',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 5,
-  duration: 2,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** 中立・永続 */
-const neutralState: State = {
-  stateId: 'dead',
-  name: '死亡',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: null,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** バフ系（防御力上昇） */
-const buffDefenseState: State = {
-  stateId: 'defensePowerUp',
-  name: '防御力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 2,
-  duration: 2,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** 永続＋スタック */
-const permanentStackedState: State = {
-  stateId: 'prosperity',
-  name: '繁栄',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 3,
-  duration: null,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-// -----------------------------------------------------------------------
 // 国家データ
-// -----------------------------------------------------------------------
-
-/** テスト用の勝利閾値 */
-
-/** プレイヤー国家 (power=300, remainingActions=2) */
-const mockPlayerNation: Nation = {
+const mockPlayerNation = createMockNation({
   nationId: 'player',
   name: 'テスト王国',
-  isNPC: false,
   power: 300,
   remainingActions: 2,
-  states: [],
-  units: [null, null, null, null, null, null, null, null],
-  graveyard: [],
-  domesticCommands: [],
-  actionCommands: [],
-  targetMilitaryRatio: 0.5,
-  aggressiveness: 0.5,
-  hostileNationIds: [],
-};
+});
 
-/** CPU国家 */
-const mockNPCNation: Nation = {
-  ...mockPlayerNation,
+const mockNPCNation = createMockNation({
   nationId: 'npc1',
   name: 'CPU帝国',
   isNPC: true,
-};
+  power: 300,
+  remainingActions: 2,
+});
 
 // -----------------------------------------------------------------------
 // テストスイート

@@ -3,6 +3,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StageSelectScreen } from '../StageSelectScreen';
 import { GameEndScreen } from '../GameEndScreen';
+import { useGameStateStore } from '@store/useGameStateStore';
+import { createMockNation, createMockNPCNation, createMockGameState } from '@ui/__tests__/fixtures';
 
 // -----------------------------------------------------------------------
 // モック設定
@@ -40,56 +42,6 @@ vi.mock('@core/domain/master/StageMaster', () => ({
       // title なし → フォールバック表示を期待
     },
   },
-}));
-
-/** useGameStateStore をモック（GameEndScreen 用） */
-vi.mock('@store/useGameStateStore', () => ({
-  useGameStateStore: vi.fn((selector: (state: any) => any) =>
-    selector({
-      gameState: {
-        stageId: 1,
-        currentRound: 5,
-        roundLimit: 5,
-        commandNum: 3,
-        currentNationIndex: 0,
-        currentPhase: 'GAME_END',
-        battleContext: null,
-        domesticContext: null,
-        nations: [
-          {
-            nationId: 'player',
-            name: 'プレイヤー国家',
-            power: 300,
-            isNPC: false,
-            remainingActions: 0,
-            states: [],
-            units: [],
-            graveyard: [],
-            domesticCommands: [],
-            actionCommands: [],
-            targetMilitaryRatio: 0.5,
-            aggressiveness: 0.5,
-            hostileNationIds: [],
-          },
-          {
-            nationId: 'npc1',
-            name: 'NPC国家',
-            power: 150,
-            isNPC: true,
-            remainingActions: 0,
-            states: [],
-            units: [],
-            graveyard: [],
-            domesticCommands: [],
-            actionCommands: [],
-            targetMilitaryRatio: 0.5,
-            aggressiveness: 0.5,
-            hostileNationIds: [],
-          },
-        ],
-      },
-    })
-  ),
 }));
 
 // -----------------------------------------------------------------------
@@ -246,6 +198,30 @@ describe('StageSelectScreen', () => {
  * TDD 赤フェーズ: onReturnToSelect props と「ステージ選択に戻る」ボタンは未実装
  */
 describe('GameEndScreen - ステージ選択に戻る', () => {
+  beforeEach(() => {
+    useGameStateStore.setState({
+      gameState: createMockGameState({
+        currentRound: 5,
+        roundLimit: 5,
+        currentPhase: 'GAME_END' as any,
+        nations: [
+          createMockNation({
+            nationId: 'player',
+            name: 'プレイヤー国家',
+            power: 300,
+            remainingActions: 0,
+          }),
+          createMockNPCNation({
+            nationId: 'npc1',
+            name: 'NPC国家',
+            power: 150,
+            remainingActions: 0,
+          }),
+        ],
+      }),
+    });
+  });
+
   it('7. onReturnToSelect が渡されたとき「ステージ選択に戻る」ボタンが表示される', () => {
     const mockOnReturnToSelect = vi.fn();
     render(<GameEndScreen onReturnToSelect={mockOnReturnToSelect} />);

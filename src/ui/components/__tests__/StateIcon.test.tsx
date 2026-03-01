@@ -1,7 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { StateIcon } from '../StateIcon';
-import { State, StateVisualType } from '@core/domain/models';
+import {
+  createBuffState,
+  createDebuffState,
+  createDeadState,
+  createProsperityState,
+} from '@ui/__tests__/fixtures';
 
 /**
  * StateIcon コンポーネント テスト
@@ -17,86 +23,15 @@ import { State, StateVisualType } from '@core/domain/models';
  */
 
 // ========================================================================
-// テストデータ
+// テストデータ（共有フィクスチャ使用）
 // ========================================================================
 
-/** バフ系・期限付き・スタックなし */
-const buffState: State = {
-  stateId: 'attackPowerUp',
-  name: '攻撃力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: 3,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** デバフ系・スタックあり */
-const debuffStackedState: State = {
-  stateId: 'attackPowerDown',
-  name: '攻撃力低下',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 5,
-  duration: 2,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** 中立系・永続 */
-const neutralPermanentState: State = {
-  stateId: 'dead',
-  name: '死亡',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: null,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** スタック&永続 */
-const permanentStackedState: State = {
-  stateId: 'prosperity',
-  name: '繁栄',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 3,
-  duration: null,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** スタック数99（境界値） */
-const stack99State: State = {
-  stateId: 'attackPowerUp',
-  name: '攻撃力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 99,
-  duration: 3,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** スタック数150（99+表示） */
-const stack150State: State = {
-  stateId: 'attackPowerUp',
-  name: '攻撃力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 150,
-  duration: 3,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
+const buffState = createBuffState();
+const debuffStackedState = createDebuffState();
+const neutralPermanentState = createDeadState();
+const permanentStackedState = createProsperityState();
+const stack99State = createBuffState({ stacks: 99 });
+const stack150State = createBuffState({ stacks: 150 });
 
 // ========================================================================
 // テストスイート
@@ -279,18 +214,19 @@ describe('StateIcon', () => {
   // 2-4. ホバーインタラクション
   // ----------------------------------------------------------------------
   describe('ホバーインタラクション', () => {
-    it('Test Case 2-4-1: マウスホバー時にonHoverコールバックが呼ばれる', () => {
+    it('Test Case 2-4-1: マウスホバー時にonHoverコールバックが呼ばれる', async () => {
+      const user = userEvent.setup();
       const mockOnHover = vi.fn();
       render(<StateIcon state={buffState} onHover={mockOnHover} />);
 
       const icon = screen.getByRole('img');
 
       // マウスエンター → stateIdが渡される
-      fireEvent.mouseEnter(icon);
+      await user.hover(icon);
       expect(mockOnHover).toHaveBeenCalledWith('attackPowerUp');
 
       // マウスリーブ → nullが渡される
-      fireEvent.mouseLeave(icon);
+      await user.unhover(icon);
       expect(mockOnHover).toHaveBeenCalledWith(null);
     });
 
@@ -309,17 +245,16 @@ describe('StateIcon', () => {
       expect(mockOnHover).toHaveBeenCalledWith(null);
     });
 
-    it('Test Case 2-4-3: onHover が未指定でもクラッシュしない', () => {
+    it('Test Case 2-4-3: onHover が未指定でもクラッシュしない', async () => {
+      const user = userEvent.setup();
       // onHoverを渡さずにレンダリング
       expect(() => render(<StateIcon state={buffState} />)).not.toThrow();
 
       const icon = screen.getByRole('img');
 
       // ホバーしてもエラーが発生しない
-      expect(() => {
-        fireEvent.mouseEnter(icon);
-        fireEvent.mouseLeave(icon);
-      }).not.toThrow();
+      await user.hover(icon);
+      await user.unhover(icon);
     });
   });
 
@@ -367,12 +302,12 @@ describe('StateIcon', () => {
   describe('スタック数変更アニメーション', () => {
     it('Test Case 2-6-1: スタック数増加時のアニメーション', () => {
       // 初期: スタック数3
-      const { rerender } = render(<StateIcon state={{ ...debuffStackedState, stacks: 3 }} />);
+      const { rerender } = render(<StateIcon state={createDebuffState({ stacks: 3 })} />);
       const badge = screen.getByTestId('stack-badge');
       expect(badge.textContent).toBe('3');
 
       // スタック数を5に増加
-      rerender(<StateIcon state={{ ...debuffStackedState, stacks: 5 }} />);
+      rerender(<StateIcon state={createDebuffState({ stacks: 5 })} />);
 
       // stack-increaseクラスが適用される
       expect(badge.className).toContain('stack-increase');
@@ -381,12 +316,12 @@ describe('StateIcon', () => {
 
     it('Test Case 2-6-2: スタック数減少時のアニメーション', () => {
       // 初期: スタック数5
-      const { rerender } = render(<StateIcon state={{ ...debuffStackedState, stacks: 5 }} />);
+      const { rerender } = render(<StateIcon state={createDebuffState({ stacks: 5 })} />);
       const badge = screen.getByTestId('stack-badge');
       expect(badge.textContent).toBe('5');
 
       // スタック数を2に減少
-      rerender(<StateIcon state={{ ...debuffStackedState, stacks: 2 }} />);
+      rerender(<StateIcon state={createDebuffState({ stacks: 2 })} />);
 
       // stack-decreaseクラスが適用される
       expect(badge.className).toContain('stack-decrease');
@@ -395,7 +330,7 @@ describe('StateIcon', () => {
 
     it('Test Case 2-6-3: 初回レンダリング時はアニメーションなし', () => {
       // 初回レンダリング
-      render(<StateIcon state={{ ...debuffStackedState, stacks: 5 }} />);
+      render(<StateIcon state={createDebuffState({ stacks: 5 })} />);
       const badge = screen.getByTestId('stack-badge');
 
       // アニメーションクラスが適用されていない
@@ -405,11 +340,11 @@ describe('StateIcon', () => {
 
     it('Test Case 2-6-4: スタック数が変化しない場合はアニメーションなし', () => {
       // 初期: スタック数5
-      const { rerender } = render(<StateIcon state={{ ...debuffStackedState, stacks: 5 }} />);
+      const { rerender } = render(<StateIcon state={createDebuffState({ stacks: 5 })} />);
       const badge = screen.getByTestId('stack-badge');
 
       // 同じスタック数で再レンダリング
-      rerender(<StateIcon state={{ ...debuffStackedState, stacks: 5 }} />);
+      rerender(<StateIcon state={createDebuffState({ stacks: 5 })} />);
 
       // アニメーションクラスが適用されていない
       expect(badge.className).not.toContain('stack-increase');
@@ -418,11 +353,11 @@ describe('StateIcon', () => {
 
     it('Test Case 2-6-5: アニメーション完了後のクラス削除', async () => {
       // 初期: スタック数3
-      const { rerender } = render(<StateIcon state={{ ...debuffStackedState, stacks: 3 }} />);
+      const { rerender } = render(<StateIcon state={createDebuffState({ stacks: 3 })} />);
       const badge = screen.getByTestId('stack-badge');
 
       // スタック数を5に増加
-      rerender(<StateIcon state={{ ...debuffStackedState, stacks: 5 }} />);
+      rerender(<StateIcon state={createDebuffState({ stacks: 5 })} />);
       expect(badge.className).toContain('stack-increase');
 
       // 400ms後にクラスが削除される
@@ -433,12 +368,12 @@ describe('StateIcon', () => {
 
     it('Test Case 2-6-6: スタック数99+表示時の動作', () => {
       // 初期: スタック数100（表示は"99+"）
-      const { rerender } = render(<StateIcon state={{ ...debuffStackedState, stacks: 100 }} />);
+      const { rerender } = render(<StateIcon state={createDebuffState({ stacks: 100 })} />);
       const badge = screen.getByTestId('stack-badge');
       expect(badge.textContent).toBe('99+');
 
       // スタック数をさらに150に増加（表示は"99+"のまま）
-      rerender(<StateIcon state={{ ...debuffStackedState, stacks: 150 }} />);
+      rerender(<StateIcon state={createDebuffState({ stacks: 150 })} />);
 
       // 内部的にスタック数が変化しているのでアニメーションは発動する
       expect(badge.className).toContain('stack-increase');
@@ -447,12 +382,12 @@ describe('StateIcon', () => {
 
     it('Test Case 2-6-7: 99から100への変化（境界値）', () => {
       // 初期: スタック数99（表示は"99"）
-      const { rerender } = render(<StateIcon state={{ ...debuffStackedState, stacks: 99 }} />);
+      const { rerender } = render(<StateIcon state={createDebuffState({ stacks: 99 })} />);
       const badge = screen.getByTestId('stack-badge');
       expect(badge.textContent).toBe('99');
 
       // スタック数を100に増加（表示は"99+"）
-      rerender(<StateIcon state={{ ...debuffStackedState, stacks: 100 }} />);
+      rerender(<StateIcon state={createDebuffState({ stacks: 100 })} />);
 
       // アニメーションが発動し、表示も変化
       expect(badge.className).toContain('stack-increase');
@@ -461,15 +396,15 @@ describe('StateIcon', () => {
 
     it('Test Case 2-6-8: 連続したスタック数変更', () => {
       // 初期: スタック数3
-      const { rerender } = render(<StateIcon state={{ ...debuffStackedState, stacks: 3 }} />);
+      const { rerender } = render(<StateIcon state={createDebuffState({ stacks: 3 })} />);
       const badge = screen.getByTestId('stack-badge');
 
       // 増加: 3 → 5
-      rerender(<StateIcon state={{ ...debuffStackedState, stacks: 5 }} />);
+      rerender(<StateIcon state={createDebuffState({ stacks: 5 })} />);
       expect(badge.className).toContain('stack-increase');
 
       // すぐに減少: 5 → 2
-      rerender(<StateIcon state={{ ...debuffStackedState, stacks: 2 }} />);
+      rerender(<StateIcon state={createDebuffState({ stacks: 2 })} />);
 
       // 最新のアニメーションが適用される
       expect(badge.className).toContain('stack-decrease');
@@ -478,11 +413,11 @@ describe('StateIcon', () => {
 
     it('Test Case 2-6-9: スタックがnullから数値に変化', () => {
       // 初期: スタックnull（バッジなし）
-      const { rerender } = render(<StateIcon state={{ ...buffState, stacks: null }} />);
+      const { rerender } = render(<StateIcon state={createBuffState({ stacks: null })} />);
       expect(screen.queryByTestId('stack-badge')).toBeNull();
 
       // スタック数を3に設定（バッジ表示）
-      rerender(<StateIcon state={{ ...buffState, stacks: 3 }} />);
+      rerender(<StateIcon state={createBuffState({ stacks: 3 })} />);
 
       const badge = screen.getByTestId('stack-badge');
       expect(badge.textContent).toBe('3');
@@ -493,11 +428,11 @@ describe('StateIcon', () => {
 
     it('Test Case 2-6-10: スタックが数値からnullに変化', () => {
       // 初期: スタック数5
-      const { rerender } = render(<StateIcon state={{ ...debuffStackedState, stacks: 5 }} />);
+      const { rerender } = render(<StateIcon state={createDebuffState({ stacks: 5 })} />);
       expect(screen.getByTestId('stack-badge')).toBeInTheDocument();
 
       // スタックをnullに変更（バッジ削除）
-      rerender(<StateIcon state={{ ...debuffStackedState, stacks: null }} />);
+      rerender(<StateIcon state={createDebuffState({ stacks: null })} />);
 
       // バッジが削除される
       expect(screen.queryByTestId('stack-badge')).toBeNull();

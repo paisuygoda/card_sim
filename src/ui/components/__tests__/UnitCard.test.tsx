@@ -2,8 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UnitCard } from '../UnitCard';
-import { Unit, State, StateVisualType } from '@core/domain/models';
+import type { Unit } from '@core/domain/models';
 import { getStateIcon } from '@core/domain/master';
+import {
+  createMockUnit,
+  createBuffState,
+  createDebuffState,
+  createDeadState,
+  createDefenseBuffState,
+  createProsperityState,
+} from '@ui/__tests__/fixtures';
 
 /**
  * UnitCard コンポーネント テスト
@@ -17,90 +25,27 @@ import { getStateIcon } from '@core/domain/master';
  */
 
 // -----------------------------------------------------------------------
-// テストデータ
+// テストデータ（共有フィクスチャ使用）
 // -----------------------------------------------------------------------
 
 /** StateIconListのデフォルト最大表示数 */
 const DEFAULT_MAX_DISPLAY = 5;
 
 /** 基本的なユニット（HP 60%） */
-const mockUnit: Unit = {
+const mockUnit = createMockUnit({
   baseUnitId: 'testUnit',
   unitId: 'nation1-testUnit',
-  ownerNationId: 'nation1',
   name: 'テストユニット',
-  maxHP: 100,
   currentHP: 60,
   attack: 30,
-  skillId: 'normalAttack', // SkillMaster に存在するID
-  states: [],
-};
+});
 
 // ステート表示テスト用のモックデータ
-/** バフ系・期限付き（攻撃力上昇） */
-const buffState: State = {
-  stateId: 'attackPowerUp',
-  name: '攻撃力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: 3,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** デバフ系・スタックあり（攻撃力低下） */
-const debuffState: State = {
-  stateId: 'attackPowerDown',
-  name: '攻撃力低下',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 5,
-  duration: 2,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** 中立・永続（死亡） */
-const deadState: State = {
-  stateId: 'dead',
-  name: '死亡',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: null,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** 防御力上昇バフ（スタックあり）→ 繁栄バフに変更 */
-const defenseBuffState: State = {
-  stateId: 'defensePowerUp',
-  name: '防御力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 2,
-  duration: 2,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** 永続＋スタック（繁栄） */
-const prosperityState: State = {
-  stateId: 'prosperity',
-  name: '繁栄',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 3,
-  duration: null,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
+const buffState = createBuffState();
+const debuffState = createDebuffState();
+const deadState = createDeadState();
+const defenseBuffState = createDefenseBuffState({ stacks: 2, duration: 2 });
+const prosperityState = createProsperityState();
 
 // -----------------------------------------------------------------------
 // テストスイート

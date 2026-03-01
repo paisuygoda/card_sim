@@ -1,0 +1,30 @@
+/* CommandPanel 固有のスタイル */
+
+.command-panel {
+  margin-top: 1rem;
+}
+
+.command-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.command-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.command-button:hover:not(:disabled) {
+  background-color: #e3f2fd;
+}
+
+.command-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

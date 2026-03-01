@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { State } from '@core/domain/models';
 import { getStateIcon, getStateCategory } from '@core/domain/master';
-import './StateIcon.css';
+import styles from './StateIcon.module.css';
 
 /** スタック数アニメーションの持続時間（ms） */
 const STACK_ANIMATION_DURATION = 400;
@@ -79,7 +79,7 @@ export const StateIcon: React.FC<StateIconProps> = ({ state, onHover, removing =
 
   return (
     <div
-      className={`state-icon ${category} ${removing ? 'removing' : ''}`}
+      className={[styles['state-icon'], styles[category], removing && styles.removing].filter(Boolean).join(' ')}
       role="img"
       tabIndex={0}
       aria-label={ariaLabel}
@@ -95,7 +95,7 @@ export const StateIcon: React.FC<StateIconProps> = ({ state, onHover, removing =
       {/* スタック数バッジ */}
       {state.stacks !== null && (
         <span
-          className={`state-icon-badge ${animationClass}`}
+          className={[styles['state-icon-badge'], animationClass && styles[animationClass]].filter(Boolean).join(' ')}
           data-testid="stack-badge"
           aria-label={`スタック数: ${state.stacks}`}
         >
@@ -105,7 +105,7 @@ export const StateIcon: React.FC<StateIconProps> = ({ state, onHover, removing =
 
       {/* 永続マーカー */}
       {state.duration === null && (
-        <span className="state-icon-permanent">∞</span>
+        <span className={styles['state-icon-permanent']}>∞</span>
       )}
     </div>
   );

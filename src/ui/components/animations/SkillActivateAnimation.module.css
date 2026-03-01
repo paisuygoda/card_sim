@@ -1,0 +1,68 @@
+/* SkillActivateAnimation 固有のスタイル */
+
+@keyframes skillReveal {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  25%  { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+  70%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+}
+
+.animation-skill {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(30, 20, 60, 0.96) 0%,
+    rgba(70, 30, 100, 0.96) 100%
+  );
+  border: 2px solid #9f7aea;
+  border-radius: 12px;
+  padding: 1.5rem 3rem;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1000;
+  animation: skillReveal 1.2s ease-in-out forwards;
+  min-width: 240px;
+}
+
+.skill-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #b794f4;
+  letter-spacing: 3px;
+  margin-bottom: 0.5rem;
+}
+
+.skill-name {
+  display: block;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 12px rgba(159, 122, 234, 0.8);
+}
+
+.skill-attacker {
+  display: block;
+  font-size: 0.9rem;
+  color: #c3dafe;
+  margin-top: 0.5rem;
+}
+
+/* SkillVisualType: ATTACK */
+.animation-skill-attack {
+  border-color: #ef4444;
+  background: linear-gradient(
+    135deg,
+    rgba(60, 20, 20, 0.96) 0%,
+    rgba(100, 30, 30, 0.96) 100%
+  );
+}
+
+.animation-skill-attack .skill-label {
+  color: #fca5a5;
+}
+
+.animation-skill-attack .skill-name {
+  text-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+}

@@ -1,0 +1,14 @@
+/* BattleScreen 固有のスタイル */
+
+.battle-screen {
+  background-color: white;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.battle-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-top: 1rem;
+}

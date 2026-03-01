@@ -1,0 +1,10 @@
+/* PhaseDisplay 固有のスタイル */
+
+.phase-display {
+  background-color: #e3f2fd;
+  padding: 0.5rem;
+  border-radius: 4px;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}

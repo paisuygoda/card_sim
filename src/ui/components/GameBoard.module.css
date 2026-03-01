@@ -1,0 +1,14 @@
+/* GameBoard 固有のスタイル */
+
+.game-board {
+  background-color: white;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.nations {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}

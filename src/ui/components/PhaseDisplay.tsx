@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GamePhase } from '@core/domain/models';
+import { getPhaseDisplayName } from '../utils';
+import styles from './PhaseDisplay.module.css';
 
 /**
  * PhaseDisplay - フェーズ表示コンポーネント
@@ -17,23 +19,6 @@ interface PhaseDisplayProps {
   currentNationName?: string;
 }
 
-const phaseNameMap: Partial<Record<GamePhase, string>> = {
-  [GamePhase.GAME_START]: 'ゲーム開始',
-  [GamePhase.ROUND_START]: 'ラウンド開始',
-  [GamePhase.TURN_START]: 'ターン開始',
-  [GamePhase.DOMESTIC]: '内政フェーズ',
-  [GamePhase.ACTION_DECISION]: '行動判断',
-  [GamePhase.BATTLE_START]: '戦闘開始',
-  [GamePhase.ATTACK_START]: '攻撃開始',
-  [GamePhase.BEFORE_ATTACK]: '攻撃直前',
-  [GamePhase.AFTER_ATTACK]: '攻撃直後',
-  [GamePhase.ATTACK_END]: '攻撃終了',
-  [GamePhase.BATTLE_END]: '戦闘終了',
-  [GamePhase.ACTION]: '行動フェーズ',
-  [GamePhase.TURN_END]: 'ターン終了',
-  [GamePhase.ROUND_END]: 'ラウンド終了',
-  [GamePhase.GAME_END]: 'ゲーム終了',
-};
 
 export const PhaseDisplay: React.FC<PhaseDisplayProps> = React.memo(({
   currentPhase,
@@ -59,10 +44,10 @@ export const PhaseDisplay: React.FC<PhaseDisplayProps> = React.memo(({
       : `国家${currentTurnPlayer + 1}`;
 
   return (
-    <div className={`phase-display${isChanging ? ' phase-changing' : ''}`}>
+    <div className={[styles['phase-display'], isChanging && 'phase-changing'].filter(Boolean).join(' ')}>
       <p>ラウンド: {roundDisplay}</p>
       <p>手番: {turnDisplay}</p>
-      <p>フェーズ: {phaseNameMap[currentPhase] ?? currentPhase}</p>
+      <p>フェーズ: {getPhaseDisplayName(currentPhase)}</p>
     </div>
   );
 });

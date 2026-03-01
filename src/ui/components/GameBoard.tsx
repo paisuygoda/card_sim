@@ -5,6 +5,7 @@ import { NationPanel } from './NationPanel';
 import { BattleArea } from './BattleArea';
 import { PhaseDisplay } from './PhaseDisplay';
 import { Graveyard } from './Graveyard';
+import styles from './GameBoard.module.css';
 
 /**
  * GameBoard - ゲームボード全体表示コンポーネント
@@ -31,14 +32,14 @@ export const GameBoard: React.FC = () => {
 
   if (!gameState) {
     return (
-      <div className="game-board" data-testid="game-board">
+      <div className={styles['game-board']} data-testid="game-board">
         <p>ゲームが開始されていません</p>
       </div>
     );
   }
 
   return (
-    <div className="game-board" data-testid="game-board">
+    <div className={styles['game-board']} data-testid="game-board">
       <PhaseDisplay
         currentPhase={gameState.currentPhase}
         currentRound={gameState.currentRound}
@@ -46,7 +47,7 @@ export const GameBoard: React.FC = () => {
         maxRound={gameState.roundLimit}
         currentNationName={gameState.nations[gameState.currentTurnPlayer]?.name}
       />
-      <div className="nations">
+      <div className={styles.nations}>
         {gameState.nations.map((nation, index) => (
           <div key={nation.nationId} className="nation-section">
             <NationPanel

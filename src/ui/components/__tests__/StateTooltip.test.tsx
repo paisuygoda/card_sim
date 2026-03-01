@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { StateTooltip } from '../StateTooltip';
-import { State, StateVisualType } from '@core/domain/models';
+import {
+  createBuffState,
+  createDebuffState,
+  createProsperityState,
+  createMockState,
+} from '@ui/__tests__/fixtures';
 
 /**
  * StateTooltip コンポーネント テスト
@@ -18,99 +23,16 @@ import { State, StateVisualType } from '@core/domain/models';
  */
 
 // ========================================================================
-// テストデータ
+// テストデータ（共有フィクスチャ使用）
 // ========================================================================
 
-/** バフ系・期限付き・スタックなし */
-const buffState: State = {
-  stateId: 'attackPowerUp',
-  name: '攻撃力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: 3,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** デバフ系・スタックあり */
-const debuffStackedState: State = {
-  stateId: 'attackPowerDown',
-  name: '攻撃力低下',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 5,
-  duration: 2,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** 永続・スタックなし */
-const permanentState: State = {
-  stateId: 'prosperity',
-  name: '繁栄',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: null,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** 永続＋スタックあり */
-const permanentStackedState: State = {
-  stateId: 'prosperity',
-  name: '繁栄',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 3,
-  duration: null,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** duration = 0 */
-const expiringState: State = {
-  stateId: 'attackPowerUp',
-  name: '攻撃力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: 0,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** 未定義ステート */
-const unknownState: State = {
-  stateId: 'unknownState',
-  name: '不明',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: 1,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** スタック数1 */
-const singleStackState: State = {
-  stateId: 'attackPowerUp',
-  name: '攻撃力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 1,
-  duration: 3,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
+const buffState = createBuffState();
+const debuffStackedState = createDebuffState();
+const permanentState = createProsperityState({ stacks: null });
+const permanentStackedState = createProsperityState();
+const expiringState = createBuffState({ duration: 0 });
+const unknownState = createMockState({ stateId: 'unknownState', name: '不明', duration: 1 });
+const singleStackState = createBuffState({ stacks: 1 });
 
 // ========================================================================
 // テストユーティリティ

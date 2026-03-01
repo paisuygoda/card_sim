@@ -1,33 +1,26 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { CommandPanel } from '../CommandPanel';
+import type { Command, Nation } from '@core/domain/models';
 import {
-  Command,
-  CommandType,
-  CommandVisualType,
-  CommandTargetType,
-  Nation,
-  Unit,
-} from '@core/domain/models';
+  createMockCommand,
+  createMockNation,
+  createMockUnit,
+} from '@ui/__tests__/fixtures';
 
 const CP = CommandPanel;
 
 // -----------------------------------------------------------------------
-// テストデータ
+// テストデータ（共有フィクスチャ使用）
 // -----------------------------------------------------------------------
 
 /** 基本コマンド（costAction=2, costPower=500） */
-const mockCommand: Command = {
+const mockCommand = createMockCommand({
   commandId: 'cmd-1',
-  commandType: CommandType.DOMESTIC,
   name: 'テストコマンド',
-  commandVisualType: CommandVisualType.DOMESTIC,
   costAction: 2,
   costPower: 500,
-  unitSpace: 0,
-  targetType: CommandTargetType.SELF_NATION,
-  effects: [],
-};
+});
 
 /** 国力コスト 0 のコマンド */
 const mockCommandZeroPower: Command = {
@@ -37,10 +30,7 @@ const mockCommandZeroPower: Command = {
   costPower: 0,
 };
 
-/**
- * description 付きコマンド
- * description は Command 型にまだ存在しないため as Command でキャスト
- */
+/** description 付きコマンド */
 const mockCommandWithDesc: Command = {
   ...mockCommand,
   commandId: 'cmd-with-desc',
@@ -56,23 +46,12 @@ const mockCommandNoDesc: Command = {
 };
 
 /** 十分なリソースを持つ国家（power=1000, remainingActions=3） */
-const mockNationSufficient: Nation = {
+const mockNationSufficient = createMockNation({
   nationId: 'nation1',
-  name: 'テスト国家',
-  isNPC: false,
   power: 1000,
-  remainingActions: 3,
-  states: [],
-  units: [null, null, null, null, null, null, null, null],
-  graveyard: [],
-  domesticCommands: [],
-  actionCommands: [],
-  targetMilitaryRatio: 0.5,
-  aggressiveness: 0.5,
-  hostileNationIds: [],
-};
+});
 
-/** 内政回数が 0 の国家（remainingActions=0, costAction=1 なら不足） */
+/** 内政回数が 0 の国家 */
 const mockNationNoActions: Nation = {
   ...mockNationSufficient,
   remainingActions: 0,
@@ -84,18 +63,14 @@ const mockNationLowPower: Nation = {
   power: 100,
 };
 
-/** 非null ユニット（unitSpace チェック用モックデータ） */
-const mockUnit: Unit = {
-  baseUnitId: 'infantry',
+/** 非null ユニット（unitSpace チェック用） */
+const mockUnit = createMockUnit({
   unitId: 'nation1infantry1',
-  ownerNationId: 'nation1',
+  baseUnitId: 'infantry',
   name: '歩兵',
-  maxHP: 100,
-  currentHP: 100,
   attack: 20,
   skillId: 'skill1',
-  states: [],
-};
+});
 
 // -----------------------------------------------------------------------
 // テストスイート

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Nation, Unit } from '@core/domain/models';
 import { UnitCard } from './UnitCard';
+import styles from './BattleArea.module.css';
 
 /**
  * BattleArea - 戦闘エリア表示コンポーネント
@@ -43,8 +44,8 @@ export const BattleArea: React.FC<BattleAreaProps> = ({ nation, currentAttacker,
     selectedUnitIndex === index;
 
   return (
-    <div className="battle-area">
-      <div className="frontline">
+    <div className={styles['battle-area']}>
+      <div className={styles.frontline}>
         <UnitCard
           unit={frontUnit}
           position="front"
@@ -70,7 +71,7 @@ export const BattleArea: React.FC<BattleAreaProps> = ({ nation, currentAttacker,
           isSelected={isSelected(2)}
         />
       </div>
-      <div className="bench">
+      <div className={styles.bench}>
         {benchUnits.map((unit, index) => (
           <UnitCard
             key={index}

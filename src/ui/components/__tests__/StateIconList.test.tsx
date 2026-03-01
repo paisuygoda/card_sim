@@ -2,12 +2,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StateIconList } from '../StateIconList';
-import { State, StateVisualType } from '@core/domain/models';
+import type { State } from '@core/domain/models';
 import { GameEvent } from '@core/infrastructure/IGameUIBridge';
 import { useUIStateStore } from '@store/useUIStateStore';
-
-// useUIStateStoreをモック化
-vi.mock('@store/useUIStateStore');
+import {
+  createBuffState,
+  createDebuffState,
+  createDeadState,
+  createProsperityState,
+  createDefenseBuffState,
+  createMockState,
+} from '@ui/__tests__/fixtures';
 
 /**
  * StateIconList コンポーネント テスト
@@ -24,87 +29,25 @@ vi.mock('@store/useUIStateStore');
  */
 
 // ========================================================================
-// テストデータ
+// テストデータ（共有フィクスチャ使用）
 // ========================================================================
 
-/** バフ系・期限付き・スタックなし */
-const buffState: State = {
-  stateId: 'attackPowerUp',
-  name: '攻撃力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: 3,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** デバフ系・スタックあり */
-const debuffState: State = {
-  stateId: 'attackPowerDown',
-  name: '攻撃力低下',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 5,
-  duration: 2,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** 中立・永続 */
-const neutralState: State = {
-  stateId: 'dead',
-  name: '死亡',
-  stateVisualType: StateVisualType.NONE,
-  stacks: null,
-  duration: null,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** 永続＋スタック */
-const permanentStackedState: State = {
-  stateId: 'prosperity',
-  name: '繁栄',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 3,
-  duration: null,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
-
-/** バフ系（防御力上昇） */
-const buffDefenseState: State = {
-  stateId: 'defensePowerUp',
-  name: '防御力上昇',
-  stateVisualType: StateVisualType.NONE,
-  stacks: 2,
-  duration: 2,
-  triggerTimings: [],
-  remainings: null,
-  effects: [],
-  excludes: [[], [], []],
-};
+const buffState = createBuffState();
+const debuffState = createDebuffState();
+const neutralState = createDeadState();
+const permanentStackedState = createProsperityState();
+const buffDefenseState = createDefenseBuffState({ stacks: 2, duration: 2 });
 
 /** 大量のステート生成ヘルパー */
 function generateStates(count: number): State[] {
-  return Array.from({ length: count }, (_, i) => ({
-    stateId: `state${i}`,
-    name: `ステート${i}`,
-    stateVisualType: StateVisualType.NONE,
-    stacks: i % 3 === 0 ? i : null,
-    duration: i % 2 === 0 ? i : null,
-    triggerTimings: [],
-    remainings: null,
-    effects: [],
-    excludes: [[], [], []],
-  }));
+  return Array.from({ length: count }, (_, i) =>
+    createMockState({
+      stateId: `state${i}`,
+      name: `ステート${i}`,
+      stacks: i % 3 === 0 ? i : null,
+      duration: i % 2 === 0 ? i : null,
+    })
+  );
 }
 
 // ========================================================================
@@ -436,14 +379,7 @@ describe('StateIconList', () => {
   // ----------------------------------------------------------------------
   describe('カテゴリ7: ステート削除演出（フェードアウト）', () => {
     beforeEach(() => {
-      // useUIStateStoreのデフォルトモックをリセット
-      vi.clearAllMocks();
-      vi.mocked(useUIStateStore).mockImplementation((selector: any) => {
-        if (typeof selector === 'function') {
-          return selector({ currentAnimation: null });
-        }
-        return { currentAnimation: null };
-      });
+      useUIStateStore.setState({ currentAnimation: null });
     });
 
     afterEach(() => {
@@ -451,18 +387,12 @@ describe('StateIconList', () => {
     });
 
     it('TC 7-1: STATE_REMOVEイベント検知時にremovingクラスが適用される', async () => {
-      // useUIStateStoreのモック
-      const mockCurrentAnimation = {
-        eventType: GameEvent.STATE_REMOVE,
-        data: { stateId: 'attackPowerUp' },
-        isPlaying: true,
-      };
-      
-      vi.mocked(useUIStateStore).mockImplementation((selector: any) => {
-        if (typeof selector === 'function') {
-          return selector({ currentAnimation: mockCurrentAnimation });
-        }
-        return { currentAnimation: mockCurrentAnimation };
+      useUIStateStore.setState({
+        currentAnimation: {
+          eventType: GameEvent.STATE_REMOVE,
+          data: { stateId: 'attackPowerUp' },
+          isPlaying: true,
+        },
       });
 
       const { container } = render(<StateIconList states={[buffState]} />);
@@ -475,17 +405,12 @@ describe('StateIconList', () => {
     it('TC 7-2: 800ms後にremovingクラスが削除される', async () => {
       vi.useFakeTimers();
 
-      const mockCurrentAnimation = {
-        eventType: GameEvent.STATE_REMOVE,
-        data: { stateId: 'attackPowerUp' },
-        isPlaying: true,
-      };
-      
-      vi.mocked(useUIStateStore).mockImplementation((selector: any) => {
-        if (typeof selector === 'function') {
-          return selector({ currentAnimation: mockCurrentAnimation });
-        }
-        return { currentAnimation: mockCurrentAnimation };
+      useUIStateStore.setState({
+        currentAnimation: {
+          eventType: GameEvent.STATE_REMOVE,
+          data: { stateId: 'attackPowerUp' },
+          isPlaying: true,
+        },
       });
 
       const { container } = render(<StateIconList states={[buffState]} />);
@@ -505,17 +430,12 @@ describe('StateIconList', () => {
     });
 
     it('TC 7-3: 複数ステート同時削除時も正しく動作する', async () => {
-      const mockCurrentAnimation = {
-        eventType: GameEvent.STATE_REMOVE,
-        data: { stateId: 'attackPowerUp' },
-        isPlaying: true,
-      };
-      
-      vi.mocked(useUIStateStore).mockImplementation((selector: any) => {
-        if (typeof selector === 'function') {
-          return selector({ currentAnimation: mockCurrentAnimation });
-        }
-        return { currentAnimation: mockCurrentAnimation };
+      useUIStateStore.setState({
+        currentAnimation: {
+          eventType: GameEvent.STATE_REMOVE,
+          data: { stateId: 'attackPowerUp' },
+          isPlaying: true,
+        },
       });
 
       const { container, rerender } = render(
@@ -528,18 +448,13 @@ describe('StateIconList', () => {
       expect(stateIcons[1]).not.toHaveClass('removing');
       expect(stateIcons[2]).not.toHaveClass('removing');
 
-      // 2つ目のステートの削除イベント発火（rerenderでcurrentAnimationを更新）
-      const mockCurrentAnimation2 = {
-        eventType: GameEvent.STATE_REMOVE,
-        data: { stateId: 'attackPowerDown' },
-        isPlaying: true,
-      };
-      
-      vi.mocked(useUIStateStore).mockImplementation((selector: any) => {
-        if (typeof selector === 'function') {
-          return selector({ currentAnimation: mockCurrentAnimation2 });
-        }
-        return { currentAnimation: mockCurrentAnimation2 };
+      // 2つ目のステートの削除イベント発火（setStateでcurrentAnimationを更新）
+      useUIStateStore.setState({
+        currentAnimation: {
+          eventType: GameEvent.STATE_REMOVE,
+          data: { stateId: 'attackPowerDown' },
+          isPlaying: true,
+        },
       });
 
       rerender(<StateIconList states={[buffState, debuffState, neutralState]} />);
@@ -552,17 +467,12 @@ describe('StateIconList', () => {
     });
 
     it('TC 7-4: 削除対象でないステートは影響を受けない', async () => {
-      const mockCurrentAnimation = {
-        eventType: GameEvent.STATE_REMOVE,
-        data: { stateId: 'attackPowerUp' },
-        isPlaying: true,
-      };
-      
-      vi.mocked(useUIStateStore).mockImplementation((selector: any) => {
-        if (typeof selector === 'function') {
-          return selector({ currentAnimation: mockCurrentAnimation });
-        }
-        return { currentAnimation: mockCurrentAnimation };
+      useUIStateStore.setState({
+        currentAnimation: {
+          eventType: GameEvent.STATE_REMOVE,
+          data: { stateId: 'attackPowerUp' },
+          isPlaying: true,
+        },
       });
 
       const { container } = render(
@@ -579,17 +489,12 @@ describe('StateIconList', () => {
     });
 
     it('TC 7-5: 存在しないステートIDの削除イベントを無視', async () => {
-      const mockCurrentAnimation = {
-        eventType: GameEvent.STATE_REMOVE,
-        data: { stateId: 'unknownState' }, // 存在しないステートID
-        isPlaying: true,
-      };
-      
-      vi.mocked(useUIStateStore).mockImplementation((selector: any) => {
-        if (typeof selector === 'function') {
-          return selector({ currentAnimation: mockCurrentAnimation });
-        }
-        return { currentAnimation: mockCurrentAnimation };
+      useUIStateStore.setState({
+        currentAnimation: {
+          eventType: GameEvent.STATE_REMOVE,
+          data: { stateId: 'unknownState' }, // 存在しないステートID
+          isPlaying: true,
+        },
       });
 
       // エラーが発生しないことを確認
@@ -607,18 +512,12 @@ describe('StateIconList', () => {
     it('TC 7-6: アニメーション中に同じステートの削除イベントが再発火してもエラーなし', async () => {
       vi.useFakeTimers();
 
-      const mockCurrentAnimation = {
-        eventType: GameEvent.STATE_REMOVE,
-        data: { stateId: 'attackPowerUp' },
-        isPlaying: true,
-      };
-      
-      let animationData = mockCurrentAnimation;
-      vi.mocked(useUIStateStore).mockImplementation((selector: any) => {
-        if (typeof selector === 'function') {
-          return selector({ currentAnimation: animationData });
-        }
-        return { currentAnimation: animationData };
+      useUIStateStore.setState({
+        currentAnimation: {
+          eventType: GameEvent.STATE_REMOVE,
+          data: { stateId: 'attackPowerUp' },
+          isPlaying: true,
+        },
       });
 
       const { container, rerender } = render(<StateIconList states={[buffState]} />);
@@ -632,12 +531,14 @@ describe('StateIconList', () => {
         vi.advanceTimersByTime(400);
       });
 
-      // 同じステートの削除イベントを再発火
-      animationData = {
-        eventType: GameEvent.STATE_REMOVE,
-        data: { stateId: 'attackPowerUp' },
-        isPlaying: true,
-      };
+      // 同じステートの削除イベントを再発火（setStateで更新）
+      useUIStateStore.setState({
+        currentAnimation: {
+          eventType: GameEvent.STATE_REMOVE,
+          data: { stateId: 'attackPowerUp' },
+          isPlaying: true,
+        },
+      });
       
       // エラーが発生しないことを確認
       expect(() => {

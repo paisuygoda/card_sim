@@ -1,0 +1,6 @@
+/* GameEndScreen 固有のスタイル */
+
+.game-end-screen {
+  text-align: center;
+  padding: 2rem;
+}

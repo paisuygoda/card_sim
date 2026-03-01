@@ -1,0 +1,95 @@
+/* DamageAnimation 固有のスタイル */
+
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+  60%  { opacity: 1; transform: translate(-50%, -68%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -90%) scale(0.9); }
+}
+
+.animation-damage {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1000;
+  animation: floatUp 0.8s ease-out forwards;
+}
+
+.damage-target {
+  display: block;
+  font-size: 1rem;
+  color: #ff8888;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.damage-amount {
+  display: block;
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #ff3333;
+  text-shadow:
+    0 0 8px rgba(255, 50, 50, 0.7),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* visualType: 攻撃由来のダメージ（ATTACK） */
+.animation-damage--attack .damage-target {
+  color: #ff6666;
+}
+
+.animation-damage--attack .damage-amount {
+  color: #ff1111;
+  text-shadow:
+    0 0 10px rgba(255, 17, 17, 0.9),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* visualType: 支援由来のダメージ（SUPPORT） */
+.animation-damage--support .damage-target {
+  color: #ffaa77;
+}
+
+.animation-damage--support .damage-amount {
+  color: #ff8844;
+  text-shadow:
+    0 0 8px rgba(255, 136, 68, 0.7),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* visualType: DAMAGE */
+.animation-damage--damage .damage-target {
+  color: #ff6666;
+}
+
+.animation-damage--damage .damage-amount {
+  color: #ff1111;
+  text-shadow:
+    0 0 10px rgba(255, 17, 17, 0.9),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* visualType: BUFF */
+.animation-damage--buff .damage-target {
+  color: #ffaa77;
+}
+
+.animation-damage--buff .damage-amount {
+  color: #ff8844;
+  text-shadow:
+    0 0 8px rgba(255, 136, 68, 0.7),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* visualType: DEBUFF */
+.animation-damage--debuff .damage-target {
+  color: #ff6666;
+}
+
+.animation-damage--debuff .damage-amount {
+  color: #ff1111;
+  text-shadow:
+    0 0 10px rgba(255, 17, 17, 0.9),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+}

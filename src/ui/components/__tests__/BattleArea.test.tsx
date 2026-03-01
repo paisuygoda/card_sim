@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BattleArea } from '../BattleArea';
-import { Nation, Unit } from '@core/domain/models';
+import { createMockUnitWithIndex, createMockNation } from '@ui/__tests__/fixtures';
 
 /**
  * BattleArea コンポーネント テスト
@@ -14,44 +14,21 @@ import { Nation, Unit } from '@core/domain/models';
  */
 
 // -----------------------------------------------------------------------
-// テストデータ
+// テストデータ（共有フィクスチャ使用）
 // -----------------------------------------------------------------------
 
-/** テスト用ユニット生成関数 */
-const createMockUnit = (index: number): Unit => ({
-  baseUnitId: `unit${index}`,
-  unitId: `nation1-unit${index}`,
-  ownerNationId: 'nation1',
-  name: `ユニット${index}`,
-  maxHP: 100,
-  currentHP: 80,
-  attack: 30,
-  skillId: 'normalAttack',
-  states: [],
-});
-
 /** テスト用国家（前衛・中衛・後衛・ベンチ2体の5ユニット構成） */
-const mockNation: Nation = {
+const mockNation = createMockNation({
   nationId: 'nation1',
-  name: 'テスト国家',
-  power: 500,
-  isNPC: false,
   remainingActions: 2,
-  states: [],
   units: [
-    createMockUnit(0), // 前衛
-    createMockUnit(1), // 中衛
-    createMockUnit(2), // 後衛
-    createMockUnit(3), // ベンチ1
-    createMockUnit(4), // ベンチ2
+    createMockUnitWithIndex(0, { currentHP: 80, attack: 30 }), // 前衛
+    createMockUnitWithIndex(1, { currentHP: 80, attack: 30 }), // 中衛
+    createMockUnitWithIndex(2, { currentHP: 80, attack: 30 }), // 後衛
+    createMockUnitWithIndex(3, { currentHP: 80, attack: 30 }), // ベンチ1
+    createMockUnitWithIndex(4, { currentHP: 80, attack: 30 }), // ベンチ2
   ],
-  graveyard: [],
-  domesticCommands: [],
-  actionCommands: [],
-  targetMilitaryRatio: 0.5,
-  aggressiveness: 0.5,
-  hostileNationIds: [],
-};
+});
 
 // -----------------------------------------------------------------------
 // BattleArea - ユニット選択UI（統合テスト）

@@ -1,5 +1,7 @@
 import React from 'react';
 import { Command, Nation } from '@core/domain/models';
+import { isCommandExecutable } from '@core/domain/logic/CommandLogic';
+import styles from './CommandPanel.module.css';
 
 /**
  * CommandPanel - コマンド選択パネル
@@ -23,23 +25,18 @@ export const CommandPanel: React.FC<CommandPanelProps> = React.memo((
   }
 ) => {
   return (
-    <div className="command-panel">
+    <div className={styles['command-panel']}>
       <h3>コマンド選択</h3>
-      <div className="command-list">
+      <div className={styles['command-list']}>
         {commands.map((command) => {
-          const nullCount = nation.units.filter((u) => u === null).length;
-          const isDisabled =
-            disabled ||
-            nation.remainingActions < command.costAction ||
-            nation.power < command.costPower ||
-            nullCount < command.unitSpace;
+          const isDisabled = disabled || !isCommandExecutable(command, nation);
 
           return (
             <button
               key={command.commandId}
               onClick={() => onCommandSelect(command)}
               disabled={isDisabled}
-              className="command-button"
+              className={styles['command-button']}
               title={command.description}
             >
               {command.name}

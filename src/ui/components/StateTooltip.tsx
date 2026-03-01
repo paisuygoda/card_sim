@@ -1,6 +1,6 @@
 import { State } from '@core/domain/models';
 import { getStateDescription } from '@core/domain/master';
-import './StateTooltip.css';
+import styles from './StateTooltip.module.css';
 
 /**
  * StateTooltip Props
@@ -75,14 +75,14 @@ export function StateTooltip({ state, position }: StateTooltipProps) {
 
   return (
     <div
-      className="state-tooltip"
+      className={styles['state-tooltip']}
       role="tooltip"
       aria-live="polite"
       style={tooltipStyle}
     >
-      <div className="state-tooltip-title">{state.name}</div>
-      <div className="state-tooltip-effects">{description}</div>
-      <div className="state-tooltip-meta">
+      <div className={styles['state-tooltip-title']}>{state.name}</div>
+      <div className={styles['state-tooltip-effects']}>{description}</div>
+      <div className={styles['state-tooltip-meta']}>
         <div>スタック: {stackText}</div>
         <div>残りターン: {durationText}</div>
       </div>

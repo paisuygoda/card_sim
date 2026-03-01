@@ -1,10 +1,9 @@
 import React from 'react';
 import { useGameStateStore } from '@store/useGameStateStore';
 import { useUIStateStore } from '@store/useUIStateStore';
-import { NationPanel } from '@ui/components/NationPanel';
-import { BattleArea } from '@ui/components/BattleArea';
+import { NationLayoutGrid } from '@ui/components/NationLayoutGrid';
 import { MasterData } from '@core/domain/master';
-import type { Nation } from '@core/domain/models';
+import type { NationEntry } from '@ui/components/NationLayoutGrid';
 import { GameEvent, CommandExecuteData } from '@core/infrastructure/IGameUIBridge';
 
 /**
@@ -37,40 +36,23 @@ export const ActionScreen: React.FC = () => {
   );
   const commandData = currentCommand?.data as CommandExecuteData | undefined;
 
-  /**
-   * 指定国家がコマンドのターゲットか判定
-   */
-  const isTargetNation = (nation: Nation): boolean => {
-    if (!commandData || !commandData.commandTarget) return false;
-    return commandData.commandTarget === nation.nationId;
-  };
+  const nations: NationEntry[] = gameState.nations.map((nation) => {
+    const isTarget = commandData?.commandTarget === nation.nationId;
+    return {
+      nation,
+      label: nation.name,
+      divClassName: `nation-section${isTarget ? ' highlighted' : ''}`,
+    };
+  });
 
   return (
     <div className="action-screen" data-testid="action-screen">
       <h2>行動フェーズ</h2>
-      <div className="action-layout">
-        {gameState.nations.map((nation) => {
-          const isTarget = isTargetNation(nation);
-          return (
-            <div
-              key={nation.nationId}
-              className={`nation-section ${isTarget ? 'highlighted' : ''}`}
-              data-testid={`nation-section-${nation.nationId}`}
-            >
-              <h3>{nation.name}</h3>
-              <NationPanel
-                nation={nation}
-                isCurrentTurn={false}
-                powerWinThreshold={powerWinThreshold}
-              />
-              <BattleArea
-                nation={nation}
-                currentAttacker={undefined}
-              />
-            </div>
-          );
-        })}
-      </div>
+      <NationLayoutGrid
+        nations={nations}
+        powerWinThreshold={powerWinThreshold}
+        layoutClassName="action-layout"
+      />
     </div>
   );
 };

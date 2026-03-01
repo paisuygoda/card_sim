@@ -1,0 +1,124 @@
+/* PowerChangeAnimation 固有のスタイル */
+
+.animation-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  font-size: 1.5rem;
+  z-index: 1000;
+  animation: fadeInOut 0.5s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  40% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* 国力変動フロートアップアニメーション */
+@keyframes powerFloatDamage {
+  0%   { 
+    opacity: 0; 
+    transform: translate(-50%, -50%) scale(0.8) rotate(-2deg); 
+  }
+  20%  { 
+    opacity: 1; 
+    transform: translate(-50%, -50%) scale(1.2) rotate(2deg); 
+  }
+  60%  { 
+    opacity: 1; 
+    transform: translate(-50%, -70%) scale(1) rotate(0deg); 
+  }
+  100% { 
+    opacity: 0; 
+    transform: translate(-50%, -95%) scale(0.9); 
+  }
+}
+
+@keyframes powerFloatHeal {
+  0%   { 
+    opacity: 0; 
+    transform: translate(-50%, -50%) scale(0.8); 
+  }
+  20%  { 
+    opacity: 1; 
+    transform: translate(-50%, -50%) scale(1.1); 
+  }
+  60%  { 
+    opacity: 1; 
+    transform: translate(-50%, -70%) scale(1); 
+  }
+  100% { 
+    opacity: 0; 
+    transform: translate(-50%, -95%) scale(0.9); 
+  }
+}
+
+.power-float {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  text-align: center;
+  pointer-events: none;
+  z-index: 1100;
+}
+
+.damage {
+  animation: powerFloatDamage 1.0s ease-out forwards;
+}
+
+.heal {
+  animation: powerFloatHeal 1.0s ease-out forwards;
+}
+
+.summary {
+  animation: powerFloatHeal 1.0s ease-out forwards;
+}
+
+.summary .amount {
+  color: #ffaa33;
+  font-size: 2rem;
+  text-shadow:
+    0 0 10px rgba(255, 170, 51, 0.8),
+    2px 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.nation-name {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+  opacity: 0.9;
+}
+
+.amount {
+  display: block;
+  font-size: 3.5rem;
+  font-weight: 900;
+}
+
+.damage .amount {
+  color: var(--power-damage-color);
+  text-shadow:
+    0 0 10px rgba(255, 102, 51, 0.8),
+    2px 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+.heal .amount {
+  color: var(--power-heal-color);
+  text-shadow:
+    0 0 10px rgba(51, 255, 119, 0.8),
+    2px 2px 4px rgba(0, 0, 0, 0.9);
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .amount {
+    font-size: 2.5rem;
+  }
+}

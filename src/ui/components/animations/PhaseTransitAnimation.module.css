@@ -1,0 +1,58 @@
+/* PhaseTransitAnimation 固有のスタイル */
+
+@keyframes phaseTransit {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+}
+
+.phase-transit-overlay {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  padding: 3rem 4rem;
+  border-radius: 12px;
+  border: 2px solid rgba(176, 190, 197, 0.3);
+  text-align: center;
+  pointer-events: none;
+  z-index: 1000;
+  animation: phaseTransit 1.5s ease-in-out forwards;
+  min-width: 320px;
+}
+
+.phase-name {
+  display: block;
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .phase-transit-overlay {
+    padding: 2rem 3rem;
+    min-width: 260px;
+  }
+  
+  .phase-name {
+    font-size: 1.8rem;
+  }
+}

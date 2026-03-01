@@ -37,13 +37,25 @@ export class ReactUIBridge implements IGameUIBridge {
    * UI処理完了の待機
    * アニメーションキューが空になるまで待機
    * これがゲームロジックとUIの同期ポイント
+   * 
+   * Zustand の subscribe を使ったイベント駆動型待機で、
+   * ポーリングによる不必要なCPU消費を排除している。
    */
   async waitUI(): Promise<void> {
-    // UI側のキューが空になるまでポーリング
-    const store = useUIStateStore.getState();
-    while (store.hasAnimationInQueue() || store.isAnimationPlaying()) {
-      await new Promise(resolve => setTimeout(resolve, 50));
+    // 既にキューが空で再生中でもなければ即座にreturn
+    const state = useUIStateStore.getState();
+    if (!state.hasAnimationInQueue() && !state.isAnimationPlaying()) {
+      return;
     }
+
+    return new Promise<void>((resolve) => {
+      const unsubscribe = useUIStateStore.subscribe((state) => {
+        if (!state.hasAnimationInQueue() && !state.isAnimationPlaying()) {
+          unsubscribe();
+          resolve();
+        }
+      });
+    });
   }
 
   /**

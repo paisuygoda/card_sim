@@ -2,6 +2,7 @@ import React from 'react';
 import { Unit } from '@core/domain/models';
 import { MasterData } from '@core/domain/master';
 import { StateIconList } from './StateIconList';
+import styles from './UnitCard.module.css';
 
 /**
  * UnitCard - ユニットカード表示コンポーネント
@@ -61,7 +62,7 @@ export const UnitCard: React.FC<UnitCardProps> = React.memo(({ unit, position, i
   if (!unit) {
     return (
       <div
-        className={`unit-card empty${isSelectable ? ' selectable' : ''}${isGraveyard ? ' graveyard-unit' : ''}`}
+        className={[styles['unit-card'], styles.empty, isSelectable && styles.selectable, isGraveyard && styles['graveyard-unit']].filter(Boolean).join(' ')}
         data-unit-position={position}
         onClick={handleClick}
         role={onClick ? 'button' : undefined}
@@ -92,7 +93,7 @@ export const UnitCard: React.FC<UnitCardProps> = React.memo(({ unit, position, i
 
   return (
     <div
-      className={`unit-card${isDefeated ? ' disabled' : ''}${isCurrentAttacker ? ' current-attacker' : ''}${isSelectable ? ' selectable' : ''}${isSelected ? ' selected' : ''}${isGraveyard ? ' graveyard-unit' : ''}`}
+      className={[styles['unit-card'], isDefeated && styles.disabled, isCurrentAttacker && styles['current-attacker'], isSelectable && styles.selectable, isSelected && styles.selected, isGraveyard && styles['graveyard-unit']].filter(Boolean).join(' ')}
       data-testid={isCurrentAttacker ? 'current-attacker' : undefined}
       data-unitid={unit.unitId}
       data-unit-position={position}
@@ -102,7 +103,7 @@ export const UnitCard: React.FC<UnitCardProps> = React.memo(({ unit, position, i
       tabIndex={onClick ? 0 : undefined}
       aria-disabled={onClick ? !isSelectable : undefined}
     >
-      {isSelected && <span className="selected-mark">✓</span>}
+      {isSelected && <span className={styles['selected-mark']}>✓</span>}
       <h3>{unit.name}</h3>
       <p>{POSITION_LABEL[position]}</p>
       <p>HP: {unit.currentHP} / {unit.maxHP}</p>
@@ -116,7 +117,7 @@ export const UnitCard: React.FC<UnitCardProps> = React.memo(({ unit, position, i
         aria-label={`HP: ${unit.currentHP} / ${unit.maxHP}`}
       >
         <div
-          className="hp-bar-fill"
+          className={styles['hp-bar-fill']}
           data-testid="hp-bar-fill"
           style={{
             width: `${hpRatio}%`,

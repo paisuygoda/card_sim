@@ -370,7 +370,10 @@ export class GameManager {
       (a, b) => b.power - a.power
     );
 
-    // 2. UIに結果通知
+    // 2. finalRankingをGameStateに設定
+    this.gameState.finalRanking = sortedNations;
+
+    // 3. UIに結果通知
     await this.bridge.notifyGameEvent(GameEvent.GAME_END, {
         finalRanking: sortedNations
     });

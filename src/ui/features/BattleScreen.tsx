@@ -1,9 +1,10 @@
 import React from 'react';
 import { useGameStateStore } from '@store/useGameStateStore';
-import { BattleArea } from '@ui/components/BattleArea';
-import { NationPanel } from '@ui/components/NationPanel';
+import { NationLayoutGrid } from '@ui/components/NationLayoutGrid';
 import { MasterData } from '@core/domain/master';
 import type { BattleContext } from '@core/domain/models/BattleContext';
+import type { NationEntry } from '@ui/components/NationLayoutGrid';
+import styles from './BattleScreen.module.css';
 
 /**
  * BattleScreen - 戦闘画面
@@ -37,37 +38,29 @@ export const BattleScreen: React.FC = () => {
     : undefined;
 
   // battleContextがある場合は攻撃側・防御側のレイアウト、ない場合は全国家を並べる
-  const nationsToShow = attackerNation && defenderNation
+  const nations: NationEntry[] = attackerNation && defenderNation
     ? [
-        { nation: attackerNation, label: '攻撃側', testId: 'attacker-side', isAttacker: true },
-        { nation: defenderNation, label: '防御側', testId: 'defender-side', isAttacker: false },
+        { nation: attackerNation, label: '攻撃側', testId: 'attacker-side', divClassName: 'attacker-side', isCurrentTurn: true },
+        { nation: defenderNation, label: '防御側', testId: 'defender-side', divClassName: 'defender-side', isCurrentTurn: false },
       ]
     : gameState.nations.map((nation, index) => ({
         nation,
         label: nation.name,
         testId: `nation-side-${index}`,
-        isAttacker: false,
+        divClassName: 'defender-side',
+        isCurrentTurn: false,
       }));
 
   return (
-    <div className="battle-screen" data-testid="battle-screen">
+    <div className={styles['battle-screen']} data-testid="battle-screen">
       <h2>戦闘フェーズ</h2>
-      <div className="battle-layout">
-        {nationsToShow.map(({ nation, label, testId, isAttacker }) => (
-          <div key={nation.nationId} className={isAttacker ? 'attacker-side' : 'defender-side'} data-testid={testId}>
-            <h3>{label}</h3>
-            <NationPanel
-              nation={nation}
-              isCurrentTurn={isAttacker}
-              powerWinThreshold={powerWinThreshold}
-            />
-            <BattleArea
-              nation={nation}
-              currentAttacker={battleContext?.currentAttacker}
-            />
-          </div>
-        ))}
-      </div>
+      <NationLayoutGrid
+        nations={nations}
+        powerWinThreshold={powerWinThreshold}
+        currentAttacker={battleContext?.currentAttacker}
+        showGraveyard
+        layoutClassName={styles['battle-layout']}
+      />
     </div>
   );
 };

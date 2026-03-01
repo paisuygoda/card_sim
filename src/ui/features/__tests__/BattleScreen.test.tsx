@@ -7,6 +7,13 @@ import type { Unit } from '@core/domain/models/Unit';
 import type { BattleContext } from '@core/domain/models/BattleContext';
 import type { GameState } from '@core/domain/models/GameState';
 import { GamePhase } from '@core/domain/models/GamePhase';
+import {
+  createMockUnit as createFixtureUnit,
+  createMockNation as createFixtureNation,
+  createMockBattleContext as createFixtureBattleContext,
+  createMockGameState,
+  createMockGraveyardUnit,
+} from '@ui/__tests__/fixtures';
 
 // -----------------------------------------------------------------------
 // モック設定
@@ -36,16 +43,8 @@ vi.mock('@core/domain/master', () => ({
   },
 }));
 
-/**
- * useGameStateStore をモック
- * 各テストで vi.mocked(...).mockImplementation() を使ってストア状態を差し替える
- */
-vi.mock('@store/useGameStateStore', () => ({
-  useGameStateStore: vi.fn(),
-}));
-
 // -----------------------------------------------------------------------
-// テストデータヘルパー
+// テストデータヘルパー（共有フィクスチャベース）
 // -----------------------------------------------------------------------
 
 /** テスト用ユニットを生成するファクトリ */
@@ -53,49 +52,24 @@ const createMockUnit = (
   name: string,
   ownerNationId: string,
   overrides: Partial<Unit> = {}
-): Unit => ({
-  baseUnitId: 'infantry',
-  unitId: `${ownerNationId}-infantry`,
+): Unit => createFixtureUnit({
   ownerNationId,
   name,
-  maxHP: 100,
-  currentHP: 100,
-  attack: 50,
-  skillId: 'normalAttack',
-  states: [],
+  unitId: `${ownerNationId}-infantry`,
   ...overrides,
 });
 
 /** テスト用国家を生成するファクトリ */
-const createMockNation = (nationId: string, overrides: Partial<Nation> = {}): Nation => ({
-  nationId,
-  name: `国家_${nationId}`,
-  isNPC: false,
-  power: 500,
-  remainingActions: 2,
-  states: [],
-  units: [null, null, null, null, null, null, null, null],
-  graveyard: [],
-  domesticCommands: [],
-  actionCommands: [],
-  targetMilitaryRatio: 0.5,
-  aggressiveness: 0.5,
-  hostileNationIds: [],
-  ...overrides,
-});
+const createMockNation = (nationId: string, overrides: Partial<Nation> = {}): Nation =>
+  createFixtureNation({
+    nationId,
+    name: `国家_${nationId}`,
+    ...overrides,
+  });
 
 /** テスト用 BattleContext を生成するファクトリ */
-const createMockBattleContext = (overrides: Partial<BattleContext> = {}): BattleContext => ({
-  attackerNationId: 'nation_a',
-  defenderNationId: 'nation_b',
-  attackOrder: [],
-  currentAttackIndex: 0,
-  currentAttacker: undefined,
-  targetUnits: [],
-  targetIndex: 0,
-  pendingPowerDamage: 0,
-  ...overrides,
-});
+const createMockBattleContext = (overrides: Partial<BattleContext> = {}): BattleContext =>
+  createFixtureBattleContext(overrides);
 
 /**
  * 戦闘中の GameState モックを生成するヘルパー関数
@@ -103,26 +77,16 @@ const createMockBattleContext = (overrides: Partial<BattleContext> = {}): Battle
 const createMockGameStateWithBattle = (
   battleContext: BattleContext | null,
   nations: Nation[] = []
-): GameState => ({
-  stageId: 1,
-  commandNum: 3,
+): GameState => createMockGameState({
   currentRound: 2,
-  roundLimit: 10,
   nations,
-  currentTurnPlayer: 0,
   currentPhase: GamePhase.BATTLE_START,
-  currentTarget: null,
-  stateQueue: [],
-  effectQueue: [],
   battleContext,
 });
 
 /** テスト用にストアを指定の gameState で初期化するヘルパー */
 const mockStoreWith = (gameState: GameState): void => {
-  vi.mocked(useGameStateStore).mockImplementation(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (selector: (state: any) => any) => selector({ gameState })
-  );
+  useGameStateStore.setState({ gameState });
 };
 
 // -----------------------------------------------------------------------
@@ -131,7 +95,7 @@ const mockStoreWith = (gameState: GameState): void => {
 
 describe('BattleScreen', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    useGameStateStore.setState({ gameState: null });
   });
 
   // -----------------------------------------------------------------------
@@ -307,6 +271,86 @@ describe('BattleScreen', () => {
       // ハイライト要素は 0 件
       const highlightedElements = screen.queryAllByTestId('current-attacker');
       expect(highlightedElements).toHaveLength(0);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // T7: Graveyard 表示
+  // -----------------------------------------------------------------------
+  describe('T7: 墓地の表示', () => {
+    it('TC-BS-GY-1: 攻撃側に墓地ユニットがある場合、attacker-side内にGraveyardが表示される', () => {
+      const graveyardUnit = createMockGraveyardUnit(0, { ownerNationId: 'nation_a' });
+      const attackerNation = createMockNation('nation_a', {
+        name: '攻撃国',
+        graveyard: [graveyardUnit],
+      });
+      const defenderNation = createMockNation('nation_b', { name: '防御国' });
+      const battleContext = createMockBattleContext({
+        attackerNationId: 'nation_a',
+        defenderNationId: 'nation_b',
+      });
+      const gameState = createMockGameStateWithBattle(battleContext, [
+        attackerNation,
+        defenderNation,
+      ]);
+      mockStoreWith(gameState);
+
+      render(<BattleScreen />);
+
+      const attackerSide = screen.getByTestId('attacker-side');
+      const graveyard = within(attackerSide).getByTestId('graveyard-container');
+      expect(graveyard).toBeInTheDocument();
+    });
+
+    it('TC-BS-GY-2: 墓地が空の場合でもGraveyardが表示される', () => {
+      const attackerNation = createMockNation('nation_a', {
+        name: '攻撃国',
+        graveyard: [],
+      });
+      const defenderNation = createMockNation('nation_b', {
+        name: '防御国',
+        graveyard: [],
+      });
+      const battleContext = createMockBattleContext({
+        attackerNationId: 'nation_a',
+        defenderNationId: 'nation_b',
+      });
+      const gameState = createMockGameStateWithBattle(battleContext, [
+        attackerNation,
+        defenderNation,
+      ]);
+      mockStoreWith(gameState);
+
+      render(<BattleScreen />);
+
+      const graveyards = screen.getAllByTestId('graveyard-container');
+      expect(graveyards).toHaveLength(2);
+    });
+
+    it('TC-BS-GY-3: 国家名が正しく墓地タイトルに表示される', () => {
+      const attackerNation = createMockNation('nation_a', {
+        name: '攻撃国',
+        graveyard: [],
+      });
+      const defenderNation = createMockNation('nation_b', {
+        name: '防御国',
+        graveyard: [],
+      });
+      const battleContext = createMockBattleContext({
+        attackerNationId: 'nation_a',
+        defenderNationId: 'nation_b',
+      });
+      const gameState = createMockGameStateWithBattle(battleContext, [
+        attackerNation,
+        defenderNation,
+      ]);
+      mockStoreWith(gameState);
+
+      render(<BattleScreen />);
+
+      const titles = screen.getAllByTestId('graveyard-title');
+      expect(titles[0]).toHaveTextContent('攻撃国の墓地');
+      expect(titles[1]).toHaveTextContent('防御国の墓地');
     });
   });
 });

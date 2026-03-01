@@ -4,6 +4,7 @@
  */
 
 export * from './BattleLogic';
+export * from './CommandLogic';
 export * from './EffectExecutor';
 export * from './GameMath';
 export * from './NPCLogic';

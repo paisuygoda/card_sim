@@ -1,5 +1,6 @@
 import React from 'react';
 import { useGameStateStore } from '@store/useGameStateStore';
+import styles from './GameEndScreen.module.css';
 
 /**
  * GameEndScreenProps
@@ -23,21 +24,27 @@ export const GameEndScreen: React.FC<GameEndScreenProps> = ({ onReturnToSelect, 
     return null;
   }
 
-  // 勝者を決定（国力最大の国家）
-  const winner = gameState.nations.reduce((prev, current) => {
-    return current.power > prev.power ? current : prev;
-  });
+  // finalRankingはGameManager.gameEndPhaseで設定される（国力降順）
+  // 未設定の場合はフォールバックとして国力順でソートする
+  const finalRanking =
+    gameState.finalRanking ?? [...gameState.nations].sort((a, b) => b.power - a.power);
+
+  const winner = finalRanking[0];
+
+  if (!winner) {
+    return null;
+  }
 
   return (
-    <div className="game-end-screen" data-testid="game-end-screen">
+    <div className={styles['game-end-screen']} data-testid="game-end-screen">
       <h1>ゲーム終了</h1>
       <h2>勝者: {winner.name}</h2>
       <div className="final-results">
         <h3>最終結果</h3>
-        {gameState.nations.map((nation) => (
+        {finalRanking.map((nation, index) => (
           <div key={nation.nationId} className="nation-result">
             <p>
-              {nation.name}: 国力 {nation.power}
+              {index + 1}位 {nation.name}: 国力 {nation.power}
             </p>
           </div>
         ))}

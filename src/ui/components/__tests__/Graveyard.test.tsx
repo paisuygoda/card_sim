@@ -1,47 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-// TDD Red フェーズ: Graveyard.tsx 未作成のため、
-// このテストは初回実行時に全て失敗することを期待する
-// @ts-expect-error - TDD Red フェーズのため未実装
+import { render, screen, fireEvent } from '@testing-library/react';
 import { Graveyard } from '../Graveyard';
-import { Unit } from '@core/domain/models';
+import { createMockGraveyardUnit } from '@ui/__tests__/fixtures';
 
 /**
  * Graveyard コンポーネント テスト
- *
- * TDD 赤フェーズ：以下の機能が未実装のため、全テストが失敗することを期待する
- *  - Graveyard.tsx の作成
- *  - Props（graveyard, nationName）の受け取り
- *  - 墓地ユニットの表示（UnitCardを流用）
- *  - 墓地が空の場合のメッセージ表示
- *  - UnitCard への isGraveyard, position props の追加
  */
 
 // -----------------------------------------------------------------------
-// テストデータ
+// テストデータ（共有フィクスチャ使用）
 // -----------------------------------------------------------------------
 
-// テストデータ定数
-const GRAVEYARD_UNIT_DEFAULT_MAX_HP = 100;
-const GRAVEYARD_UNIT_DEFAULT_ATTACK = 30;
-const GRAVEYARD_UNIT_CURRENT_HP = 0; // 墓地ユニットは常に死亡
-
-/**
- * テスト用の墓地ユニット生成関数
- * @param index ユニット番号
- * @returns 墓地用ユニット（currentHP=0）
- */
-const createMockUnit = (index: number): Unit => ({
-  baseUnitId: `graveyardUnit${index}`,
-  unitId: `nation1-graveyardUnit${index}`,
-  ownerNationId: 'nation1',
-  name: `墓地ユニット${index}`,
-  maxHP: GRAVEYARD_UNIT_DEFAULT_MAX_HP,
-  currentHP: GRAVEYARD_UNIT_CURRENT_HP,
-  attack: GRAVEYARD_UNIT_DEFAULT_ATTACK,
-  skillId: 'normalAttack',
-  states: [],
-});
+const createMockUnit = (index: number) => createMockGraveyardUnit(index);
 
 // -----------------------------------------------------------------------
 // TC-GY-1: 基本レンダリング
@@ -314,5 +284,91 @@ describe('TC-GY-4: 境界値 - 複数ユニット', () => {
     );
 
     consoleErrorSpy.mockRestore();
+  });
+});
+
+// -----------------------------------------------------------------------
+// TC-GY-5: アコーディオン開閉
+// -----------------------------------------------------------------------
+
+describe('TC-GY-5: アコーディオン開閉', () => {
+  const createMockUnit = (index: number) => createMockGraveyardUnit(index);
+
+  /**
+   * TC-GY-5-1: 初期状態でユニットが表示されている（デフォルト展開）
+   *
+   * Given: graveyard=[2体], nationName='テスト王国'
+   * When: Graveyardコンポーネントをレンダリング
+   * Then: graveyard-units が表示される
+   */
+  it('TC-GY-5-1: 初期状態でユニットリストが表示されている（デフォルト展開）', () => {
+    const graveyard = [createMockUnit(0), createMockUnit(1)];
+    render(<Graveyard graveyard={graveyard} nationName="テスト王国" />);
+
+    expect(screen.getByTestId('graveyard-units')).toBeInTheDocument();
+  });
+
+  /**
+   * TC-GY-5-2: ヘッダークリックでユニットリストが折りたたまれる
+   *
+   * Given: 初期展開状態
+   * When: graveyard-toggle をクリック
+   * Then: graveyard-units が非表示になる
+   */
+  it('TC-GY-5-2: ヘッダークリックでユニットリストが折りたたまれる', () => {
+    const graveyard = [createMockUnit(0), createMockUnit(1)];
+    render(<Graveyard graveyard={graveyard} nationName="テスト王国" />);
+
+    const toggle = screen.getByTestId('graveyard-toggle');
+    fireEvent.click(toggle);
+
+    expect(screen.queryByTestId('graveyard-units')).not.toBeInTheDocument();
+  });
+
+  /**
+   * TC-GY-5-3: 折りたたみ後に再度クリックで展開される
+   *
+   * Given: 折りたたみ状態
+   * When: graveyard-toggle を再度クリック
+   * Then: graveyard-units が再び表示される
+   */
+  it('TC-GY-5-3: 折りたたみ後に再度クリックで展開される', () => {
+    const graveyard = [createMockUnit(0)];
+    render(<Graveyard graveyard={graveyard} nationName="テスト王国" />);
+
+    const toggle = screen.getByTestId('graveyard-toggle');
+    fireEvent.click(toggle); // 閉じる
+    fireEvent.click(toggle); // 開く
+
+    expect(screen.getByTestId('graveyard-units')).toBeInTheDocument();
+  });
+
+  /**
+   * TC-GY-5-4: 展開時に aria-expanded="true" が設定される
+   *
+   * Given: 初期展開状態
+   * When: Graveyardをレンダリング
+   * Then: graveyard-toggle の aria-expanded が "true"
+   */
+  it('TC-GY-5-4: 展開時に aria-expanded="true" が設定される', () => {
+    render(<Graveyard graveyard={[]} nationName="テスト王国" />);
+
+    const toggle = screen.getByTestId('graveyard-toggle');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  /**
+   * TC-GY-5-5: 折りたたみ時に aria-expanded="false" になる
+   *
+   * Given: 折りたたみ後の状態
+   * When: ヘッダーをクリックして閉じる
+   * Then: graveyard-toggle の aria-expanded が "false"
+   */
+  it('TC-GY-5-5: 折りたたみ時に aria-expanded="false" になる', () => {
+    render(<Graveyard graveyard={[]} nationName="テスト王国" />);
+
+    const toggle = screen.getByTestId('graveyard-toggle');
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 });

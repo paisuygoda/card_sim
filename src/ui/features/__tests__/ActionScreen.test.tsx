@@ -9,6 +9,11 @@ import type { GameState } from '@core/domain/models/GameState';
 import { GamePhase } from '@core/domain/models/GamePhase';
 import { GameEvent } from '@core/infrastructure/IGameUIBridge';
 import type { AnimationQueueItem } from '@store/useUIStateStore';
+import {
+  createMockUnit as createFixtureUnit,
+  createMockNation as createFixtureNation,
+  createMockGameState as createFixtureGameState,
+} from '@ui/__tests__/fixtures';
 
 // -----------------------------------------------------------------------
 // モック設定
@@ -43,24 +48,8 @@ vi.mock('@core/domain/master', () => ({
   },
 }));
 
-/**
- * useGameStateStore をモック
- * 各テストで vi.mocked(...).mockImplementation() を使ってストア状態を差し替える
- */
-vi.mock('@store/useGameStateStore', () => ({
-  useGameStateStore: vi.fn(),
-}));
-
-/**
- * useUIStateStore をモック
- * 各テストで vi.mocked(...).mockImplementation() を使ってストア状態を差し替える
- */
-vi.mock('@store/useUIStateStore', () => ({
-  useUIStateStore: vi.fn(),
-}));
-
 // -----------------------------------------------------------------------
-// テストデータヘルパー
+// テストデータヘルパー（共有フィクスチャベース）
 // -----------------------------------------------------------------------
 
 /** テスト用ユニットを生成するファクトリ */
@@ -68,69 +57,39 @@ const createMockUnit = (
   name: string,
   ownerNationId: string,
   overrides: Partial<Unit> = {}
-): Unit => ({
-  baseUnitId: 'infantry',
-  unitId: `${ownerNationId}-infantry`,
+): Unit => createFixtureUnit({
   ownerNationId,
   name,
-  maxHP: 100,
-  currentHP: 100,
-  attack: 50,
-  skillId: 'normalAttack',
-  states: [],
+  unitId: `${ownerNationId}-infantry`,
   ...overrides,
 });
 
 /** テスト用国家を生成するファクトリ */
-const createMockNation = (nationId: string, overrides: Partial<Nation> = {}): Nation => ({
-  nationId,
-  name: `国家_${nationId}`,
-  isNPC: false,
-  power: 500,
-  remainingActions: 2,
-  states: [],
-  units: [null, null, null, null, null, null, null, null],
-  graveyard: [],
-  domesticCommands: [],
-  actionCommands: [],
-  targetMilitaryRatio: 0.5,
-  aggressiveness: 0.5,
-  hostileNationIds: [],
-  ...overrides,
-});
+const createMockNation = (nationId: string, overrides: Partial<Nation> = {}): Nation =>
+  createFixtureNation({
+    nationId,
+    name: `国家_${nationId}`,
+    ...overrides,
+  });
 
 /**
  * テスト用 GameState を生成するヘルパー関数
  */
-const createMockGameState = (overrides: Partial<GameState> = {}): GameState => ({
-  stageId: 1,
-  commandNum: 3,
-  currentRound: 2,
-  roundLimit: 10,
-  nations: [],
-  currentTurnPlayer: 0,
-  currentPhase: GamePhase.ACTION,
-  currentTarget: null,
-  stateQueue: [],
-  effectQueue: [],
-  battleContext: null,
-  ...overrides,
-});
+const createMockGameState = (overrides: Partial<GameState> = {}): GameState =>
+  createFixtureGameState({
+    currentRound: 2,
+    currentPhase: GamePhase.ACTION,
+    ...overrides,
+  });
 
 /** テスト用にGameStateストアを指定の gameState で初期化するヘルパー */
 const mockStoreWith = (gameState: GameState | null): void => {
-  vi.mocked(useGameStateStore).mockImplementation(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (selector: (state: any) => any) => selector({ gameState })
-  );
+  useGameStateStore.setState({ gameState });
 };
 
 /** テスト用にUIStateストアを指定の animationQueue で初期化するヘルパー */
 const mockUIStoreWith = (state: { animationQueue: AnimationQueueItem[] }): void => {
-  vi.mocked(useUIStateStore).mockImplementation(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (selector: (s: any) => any) => selector(state)
-  );
+  useUIStateStore.setState(state);
 };
 
 // -----------------------------------------------------------------------
@@ -139,7 +98,8 @@ const mockUIStoreWith = (state: { animationQueue: AnimationQueueItem[] }): void 
 
 describe('ActionScreen', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    useGameStateStore.setState({ gameState: null });
+    useUIStateStore.setState({ animationQueue: [] });
   });
 
   // -----------------------------------------------------------------------
@@ -229,7 +189,7 @@ describe('ActionScreen', () => {
             data: {
               commandName: '外交工作',
               commandType: 'DIPLOMACY',
-              commandTarget: '国家B',
+              commandTarget: 'nation_b',
             },
           },
         ],
@@ -316,7 +276,7 @@ describe('ActionScreen', () => {
             data: {
               commandName: '外交工作',
               commandType: 'DIPLOMACY',
-              commandTarget: '国家B',
+              commandTarget: 'nation_b',
             },
           },
           {
@@ -324,7 +284,7 @@ describe('ActionScreen', () => {
             data: {
               commandName: '諜報活動',
               commandType: 'INTELLIGENCE',
-              commandTarget: '国家C',
+              commandTarget: 'nation_c',
             },
           },
         ],

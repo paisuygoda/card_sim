@@ -1,0 +1,17 @@
+/* BattleArea 固有のスタイル */
+
+.battle-area {
+  margin-top: 1rem;
+}
+
+.frontline {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.bench {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
